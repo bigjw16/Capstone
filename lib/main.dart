@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -31,7 +31,125 @@ class MyApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       theme: ThemeData(colorSchemeSeed: Colors.teal, useMaterial3: true),
-      home: ReminderPage(notificationService: notificationService),
+      home: HomePage(notificationService: notificationService),
+    );
+  }
+}
+
+class HomePage extends StatelessWidget {
+  const HomePage({super.key, required this.notificationService});
+
+  final NotificationService notificationService;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('복약 도우미')),
+      body: Column(
+        children: [
+          Expanded(
+            child: Center(
+              child: Text(
+                '필요한 기능을 선택하세요',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: HomeActionWidget(
+                      icon: Icons.add_alert,
+                      title: '알림 등록',
+                      subtitle: '복약 알림을 추가합니다.',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                ReminderPage(notificationService: notificationService),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Expanded(
+                    child: HomeActionWidget(
+                      icon: Icons.medication,
+                      title: '복약 기록',
+                      subtitle: '준비 중인 기능입니다.',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Expanded(
+                    child: HomeActionWidget(
+                      icon: Icons.show_chart,
+                      title: '복약 통계',
+                      subtitle: '준비 중인 기능입니다.',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Expanded(
+                    child: HomeActionWidget(
+                      icon: Icons.settings,
+                      title: '설정',
+                      subtitle: '준비 중인 기능입니다.',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class HomeActionWidget extends StatelessWidget {
+  const HomeActionWidget({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              Icon(icon, size: 32),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleMedium),
+                    Text(subtitle),
+                  ],
+                ),
+              ),
+              if (onTap != null) const Icon(Icons.chevron_right),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -124,7 +242,7 @@ class _ReminderPageState extends State<ReminderPage> {
         : _selectedTime!.format(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('복약 알림')),
+      appBar: AppBar(title: const Text('알림 등록')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
