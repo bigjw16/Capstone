@@ -23,6 +23,7 @@ void main() async {
       final medicineName = data['medicineName'] as String?;
       if (medicineName == null) return;
 
+      notificationService.takePendingAlarmPayload();
       appNavigatorKey.currentState?.push(
         MaterialPageRoute(
           builder: (_) => AlarmRingPage(
@@ -37,23 +38,6 @@ void main() async {
 
   runApp(MyApp(notificationService: notificationService));
 
-  if (notificationService.launchPayload != null) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final data = NotificationService.parsePayload(notificationService.launchPayload!);
-      final medicineName = data['medicineName'] as String?;
-      if (medicineName == null) return;
-
-      appNavigatorKey.currentState?.push(
-        MaterialPageRoute(
-          builder: (_) => AlarmRingPage(
-            medicineName: medicineName,
-            reminderId: data['reminderId'] as int?,
-            notificationService: notificationService,
-          ),
-        ),
-      );
-    });
-  }
 }
 
 class MyApp extends StatelessWidget {
@@ -92,12 +76,14 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   late final VideoPlayerController _videoController;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openAlarmIfPending());
     _videoController = VideoPlayerController.networkUrl(
       Uri.parse('https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4'),
     )..initialize().then((_) {
@@ -112,8 +98,36 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _videoController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _openAlarmIfPending();
+    }
+  }
+
+  Future<void> _openAlarmIfPending() async {
+    await widget.notificationService.refreshPendingAlarmPayload();
+    final payload = widget.notificationService.takePendingAlarmPayload();
+    if (payload == null || !mounted) return;
+
+    final data = NotificationService.parsePayload(payload);
+    final medicineName = data['medicineName'] as String?;
+    if (medicineName == null) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AlarmRingPage(
+          medicineName: medicineName,
+          reminderId: data['reminderId'] as int?,
+          notificationService: widget.notificationService,
+        ),
+      ),
+    );
   }
 
   @override
@@ -492,7 +506,8 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   final List<ReminderItem> _savedReminders = <ReminderItem>[];
   final List<DoseHistory> _histories = <DoseHistory>[];
-  String? launchPayload;
+  String? _pendingAlarmPayload;
+  String? _lastHandledPayload;
 
   List<ReminderItem> get reminders => List<ReminderItem>.unmodifiable(_savedReminders);
   List<DoseHistory> get histories => List<DoseHistory>.unmodifiable(_histories);
@@ -513,13 +528,16 @@ class NotificationService {
       settings,
       onDidReceiveNotificationResponse: (response) {
         final payload = response.payload;
-        if (payload != null) onAlarmPayload(payload);
+        if (payload != null) {
+          _pendingAlarmPayload = payload;
+          onAlarmPayload(payload);
+        }
       },
     );
 
     final launchDetails = await _plugin.getNotificationAppLaunchDetails();
     if (launchDetails?.didNotificationLaunchApp ?? false) {
-      launchPayload = launchDetails?.notificationResponse?.payload;
+      _pendingAlarmPayload = launchDetails?.notificationResponse?.payload;
     }
 
     final androidPlugin = _plugin
@@ -528,6 +546,23 @@ class NotificationService {
     await androidPlugin?.requestNotificationsPermission();
     await androidPlugin?.requestExactAlarmsPermission();
     await androidPlugin?.requestFullScreenIntentPermission();
+  }
+
+  Future<void> refreshPendingAlarmPayload() async {
+    final launchDetails = await _plugin.getNotificationAppLaunchDetails();
+    if (launchDetails?.didNotificationLaunchApp ?? false) {
+      final payload = launchDetails?.notificationResponse?.payload;
+      if (payload != null && payload != _lastHandledPayload) {
+        _pendingAlarmPayload = payload;
+      }
+    }
+  }
+
+  String? takePendingAlarmPayload() {
+    final payload = _pendingAlarmPayload;
+    _pendingAlarmPayload = null;
+    _lastHandledPayload = payload;
+    return payload;
   }
 
   Future<void> scheduleDailyReminder(ReminderItem item) async {
