@@ -1,27 +1,57 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:video_player/video_player.dart';
+import 'package:vibration/vibration.dart';
 
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   final notificationService = NotificationService();
   await notificationService.initialize(
-    onReminderTap: () {
-      appNavigatorKey.currentState?.pushNamed('/reminders');
+    onAlarmPayload: (payload) {
+      final data = NotificationService.parsePayload(payload);
+      final medicineName = data['medicineName'] as String?;
+      if (medicineName == null) return;
+
+      appNavigatorKey.currentState?.push(
+        MaterialPageRoute(
+          builder: (_) => AlarmRingPage(
+            medicineName: medicineName,
+            reminderId: data['reminderId'] as int?,
+            notificationService: notificationService,
+          ),
+        ),
+      );
     },
   );
 
   runApp(MyApp(notificationService: notificationService));
 
-  if (notificationService.shouldOpenReminderPageOnLaunch) {
+  if (notificationService.launchPayload != null) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      appNavigatorKey.currentState?.pushNamed('/reminders');
+      final data = NotificationService.parsePayload(notificationService.launchPayload!);
+      final medicineName = data['medicineName'] as String?;
+      if (medicineName == null) return;
+
+      appNavigatorKey.currentState?.push(
+        MaterialPageRoute(
+          builder: (_) => AlarmRingPage(
+            medicineName: medicineName,
+            reminderId: data['reminderId'] as int?,
+            notificationService: notificationService,
+          ),
+        ),
+      );
     });
   }
 }
@@ -47,6 +77,7 @@ class MyApp extends StatelessWidget {
       home: HomePage(notificationService: notificationService),
       routes: {
         '/reminders': (_) => ReminderPage(notificationService: notificationService),
+        '/history': (_) => HistoryPage(notificationService: notificationService),
       },
     );
   }
@@ -111,49 +142,24 @@ class _HomePageState extends State<HomePage> {
                   HomeActionWidget(
                     icon: Icons.add_alert,
                     title: '알림 등록',
-                    subtitle: '복약 알림을 추가합니다.',
-                    onTap: () {
-                      Navigator.of(context).pushNamed('/reminders');
-                    },
+                    subtitle: '복약 알림 추가',
+                    onTap: () => Navigator.of(context).pushNamed('/reminders'),
                   ),
                   HomeActionWidget(
-                    icon: Icons.medication,
+                    icon: Icons.history,
                     title: '복약 기록',
-                    subtitle: '기록 화면으로 이동합니다.',
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const PlaceholderPage(
-                          title: '복약 기록',
-                          message: '복약 기록 화면입니다.',
-                        ),
-                      ),
-                    ),
+                    subtitle: '종료 기록 보기',
+                    onTap: () => Navigator.of(context).pushNamed('/history'),
                   ),
-                  HomeActionWidget(
+                  const HomeActionWidget(
                     icon: Icons.show_chart,
                     title: '복약 통계',
-                    subtitle: '통계 화면으로 이동합니다.',
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const PlaceholderPage(
-                          title: '복약 통계',
-                          message: '복약 통계 화면입니다.',
-                        ),
-                      ),
-                    ),
+                    subtitle: '준비 중',
                   ),
-                  HomeActionWidget(
+                  const HomeActionWidget(
                     icon: Icons.settings,
                     title: '설정',
-                    subtitle: '설정 화면으로 이동합니다.',
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const PlaceholderPage(
-                          title: '설정',
-                          message: '앱 설정 화면입니다.',
-                        ),
-                      ),
-                    ),
+                    subtitle: '준비 중',
                   ),
                 ],
               ),
@@ -204,35 +210,19 @@ class HomeActionWidget extends StatelessWidget {
   }
 }
 
-class PlaceholderPage extends StatelessWidget {
-  const PlaceholderPage({
-    super.key,
-    required this.title,
-    required this.message,
-  });
-
-  final String title;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(child: Text(message)),
-    );
-  }
-}
-
 class ReminderItem {
-  ReminderItem({
-    required this.id,
-    required this.medicineName,
-    required this.time,
-  });
+  ReminderItem({required this.id, required this.medicineName, required this.time});
 
   final int id;
   final String medicineName;
   final TimeOfDay time;
+}
+
+class DoseHistory {
+  DoseHistory({required this.medicineName, required this.completedAt});
+
+  final String medicineName;
+  final DateTime completedAt;
 }
 
 class ReminderPage extends StatefulWidget {
@@ -255,38 +245,25 @@ class _ReminderPageState extends State<ReminderPage> {
     _reminders.addAll(widget.notificationService.reminders);
   }
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    super.dispose();
-  }
-
   Future<void> _pickTime() async {
     final picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
     );
-
     if (picked != null) {
-      setState(() {
-        _selectedTime = picked;
-      });
+      setState(() => _selectedTime = picked);
     }
   }
 
   Future<void> _addReminder() async {
     final medicineName = _nameController.text.trim();
     if (medicineName.isEmpty || _selectedTime == null) {
-      _showSnackBar('약 이름과 시간을 모두 입력해주세요.');
+      _snack('약 이름과 시간을 모두 입력해주세요.');
       return;
     }
 
     final id = DateTime.now().millisecondsSinceEpoch.remainder(1 << 31);
-    final item = ReminderItem(
-      id: id,
-      medicineName: medicineName,
-      time: _selectedTime!,
-    );
+    final item = ReminderItem(id: id, medicineName: medicineName, time: _selectedTime!);
 
     await widget.notificationService.scheduleDailyReminder(item);
 
@@ -297,8 +274,7 @@ class _ReminderPageState extends State<ReminderPage> {
       _nameController.clear();
       _selectedTime = null;
     });
-
-    _showSnackBar('알림이 등록되었습니다.');
+    _snack('알림이 등록되었습니다.');
   }
 
   Future<void> _deleteReminder(ReminderItem item) async {
@@ -310,15 +286,13 @@ class _ReminderPageState extends State<ReminderPage> {
     });
   }
 
-  void _showSnackBar(String message) {
+  void _snack(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
-    final timeLabel = _selectedTime == null
-        ? '시간 선택'
-        : _selectedTime!.format(context);
+    final timeLabel = _selectedTime == null ? '시간 선택' : _selectedTime!.format(context);
 
     return Scaffold(
       appBar: AppBar(title: const Text('알림 등록')),
@@ -359,7 +333,7 @@ class _ReminderPageState extends State<ReminderPage> {
                   ? const Center(child: Text('등록된 복약 알림이 없습니다.'))
                   : ListView.builder(
                       itemCount: _reminders.length,
-                      itemBuilder: (context, index) {
+                      itemBuilder: (_, index) {
                         final item = _reminders[index];
                         return Card(
                           child: ListTile(
@@ -381,16 +355,155 @@ class _ReminderPageState extends State<ReminderPage> {
   }
 }
 
+class AlarmRingPage extends StatefulWidget {
+  const AlarmRingPage({
+    super.key,
+    required this.medicineName,
+    required this.notificationService,
+    this.reminderId,
+  });
+
+  final String medicineName;
+  final int? reminderId;
+  final NotificationService notificationService;
+
+  @override
+  State<AlarmRingPage> createState() => _AlarmRingPageState();
+}
+
+class _AlarmRingPageState extends State<AlarmRingPage> {
+  Timer? _timeoutTimer;
+  Timer? _vibrationTimer;
+  bool _stopped = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startAlerting();
+  }
+
+  Future<void> _startAlerting() async {
+    FlutterRingtonePlayer().playAlarm(looping: true, asAlarm: true, volume: 1.0);
+
+    if (await Vibration.hasVibrator() ?? false) {
+      _vibrationTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        Vibration.vibrate(duration: 800);
+      });
+    }
+
+    _timeoutTimer = Timer(const Duration(minutes: 1), () async {
+      if (_stopped) return;
+      await _stopAndClose(recordHistory: false);
+      await widget.notificationService.scheduleSnoozeAfter3Minutes(
+        medicineName: widget.medicineName,
+        reminderId: widget.reminderId,
+      );
+    });
+  }
+
+  Future<void> _stopAndClose({required bool recordHistory}) async {
+    _stopped = true;
+    _timeoutTimer?.cancel();
+    _vibrationTimer?.cancel();
+    FlutterRingtonePlayer().stop();
+
+    if (recordHistory) {
+      widget.notificationService.recordDose(widget.medicineName);
+    }
+
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  void dispose() {
+    _timeoutTimer?.cancel();
+    _vibrationTimer?.cancel();
+    FlutterRingtonePlayer().stop();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.red.shade50,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.alarm, size: 72, color: Colors.red),
+              const SizedBox(height: 16),
+              const Text('복약 알림', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Text(
+                widget.medicineName,
+                style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => _stopAndClose(recordHistory: true),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: const Text('복약 완료 (알림 종료)'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class HistoryPage extends StatelessWidget {
+  const HistoryPage({super.key, required this.notificationService});
+
+  final NotificationService notificationService;
+
+  @override
+  Widget build(BuildContext context) {
+    final records = notificationService.histories.reversed.toList();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('복약 기록')),
+      body: records.isEmpty
+          ? const Center(child: Text('아직 종료 기록이 없습니다.'))
+          : ListView.builder(
+              itemCount: records.length,
+              itemBuilder: (_, index) {
+                final record = records[index];
+                return ListTile(
+                  leading: const Icon(Icons.check_circle_outline),
+                  title: Text(record.medicineName),
+                  subtitle: Text('종료 시각: ${record.completedAt}'),
+                );
+              },
+            ),
+    );
+  }
+}
+
 class NotificationService {
-  final FlutterLocalNotificationsPlugin _plugin =
-      FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   final List<ReminderItem> _savedReminders = <ReminderItem>[];
-  bool shouldOpenReminderPageOnLaunch = false;
-  final Map<int, List<int>> _notificationIdMap = <int, List<int>>{};
+  final List<DoseHistory> _histories = <DoseHistory>[];
+  String? launchPayload;
 
   List<ReminderItem> get reminders => List<ReminderItem>.unmodifiable(_savedReminders);
+  List<DoseHistory> get histories => List<DoseHistory>.unmodifiable(_histories);
 
-  Future<void> initialize({required VoidCallback onReminderTap}) async {
+  static Map<String, dynamic> parsePayload(String payload) {
+    final decoded = jsonDecode(payload);
+    if (decoded is Map<String, dynamic>) return decoded;
+    return <String, dynamic>{};
+  }
+
+  Future<void> initialize({required void Function(String payload) onAlarmPayload}) async {
     await _configureLocalTimeZone();
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -399,25 +512,102 @@ class NotificationService {
     await _plugin.initialize(
       settings,
       onDidReceiveNotificationResponse: (response) {
-        if (response.payload == 'open_reminders') {
-          onReminderTap();
-        }
+        final payload = response.payload;
+        if (payload != null) onAlarmPayload(payload);
       },
     );
 
-    final appLaunchDetails = await _plugin.getNotificationAppLaunchDetails();
-    if (appLaunchDetails?.didNotificationLaunchApp ?? false) {
-      final payload = appLaunchDetails?.notificationResponse?.payload;
-      shouldOpenReminderPageOnLaunch = payload == 'open_reminders';
+    final launchDetails = await _plugin.getNotificationAppLaunchDetails();
+    if (launchDetails?.didNotificationLaunchApp ?? false) {
+      launchPayload = launchDetails?.notificationResponse?.payload;
     }
 
     final androidPlugin = _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
 
     await androidPlugin?.requestNotificationsPermission();
     await androidPlugin?.requestExactAlarmsPermission();
+  }
+
+  Future<void> scheduleDailyReminder(ReminderItem item) async {
+    _savedReminders.removeWhere((e) => e.id == item.id);
+    _savedReminders.add(item);
+
+    final scheduledDate = _nextInstanceOfTime(item.time);
+    await _plugin.zonedSchedule(
+      item.id,
+      '복약 시간입니다',
+      '${item.medicineName} 복용할 시간이에요.',
+      scheduledDate,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'medication_channel',
+          '복약 알림',
+          channelDescription: '정해진 시간에 복약 알림을 제공합니다.',
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
+          category: AndroidNotificationCategory.alarm,
+          visibility: NotificationVisibility.public,
+          fullScreenIntent: true,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      payload: jsonEncode({
+        'type': 'alarm',
+        'medicineName': item.medicineName,
+        'reminderId': item.id,
+      }),
+    );
+  }
+
+  Future<void> scheduleSnoozeAfter3Minutes({
+    required String medicineName,
+    int? reminderId,
+  }) async {
+    final id = DateTime.now().millisecondsSinceEpoch.remainder(1 << 31);
+
+    await _plugin.zonedSchedule(
+      id,
+      '복약 재알림',
+      '$medicineName 복용 알림입니다. 다시 확인해주세요.',
+      tz.TZDateTime.now(tz.local).add(const Duration(minutes: 3)),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'medication_channel',
+          '복약 알림',
+          channelDescription: '정해진 시간에 복약 알림을 제공합니다.',
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
+          category: AndroidNotificationCategory.alarm,
+          visibility: NotificationVisibility.public,
+          fullScreenIntent: true,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      payload: jsonEncode({
+        'type': 'alarm',
+        'medicineName': medicineName,
+        'reminderId': reminderId,
+      }),
+    );
+  }
+
+  Future<void> cancelReminder(int id) async {
+    await _plugin.cancel(id);
+    _savedReminders.removeWhere((e) => e.id == id);
+  }
+
+  void recordDose(String medicineName) {
+    _histories.add(DoseHistory(medicineName: medicineName, completedAt: DateTime.now()));
   }
 
   Future<void> _configureLocalTimeZone() async {
@@ -426,68 +616,8 @@ class NotificationService {
     tz.setLocalLocation(tz.getLocation(timezoneName));
   }
 
-  Future<void> scheduleDailyReminder(ReminderItem item) async {
-    _savedReminders.removeWhere((element) => element.id == item.id);
-    _savedReminders.add(item);
-
-    await cancelReminder(item.id, removeSavedReminder: false);
-
-    const androidDetails = AndroidNotificationDetails(
-      'medication_channel',
-      '복약 알림',
-      channelDescription: '정해진 시간에 복약 알림을 제공합니다.',
-      importance: Importance.max,
-      priority: Priority.high,
-      playSound: true,
-      enableVibration: true,
-      category: AndroidNotificationCategory.alarm,
-      visibility: NotificationVisibility.public,
-      ongoing: true,
-      autoCancel: false,
-      timeoutAfter: 60000,
-    );
-
-    final ids = <int>[];
-    for (var i = 0; i < 6; i++) {
-      final notificationId = item.id + i;
-      final scheduledDate = _nextInstanceOfTime(item.time).add(
-        Duration(seconds: i * 10),
-      );
-
-      ids.add(notificationId);
-
-      await _plugin.zonedSchedule(
-        notificationId,
-        '복약 시간입니다',
-        '${item.medicineName} 복용할 시간이에요. (${i + 1}/6)',
-        scheduledDate,
-        const NotificationDetails(android: androidDetails),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        matchDateTimeComponents: DateTimeComponents.time,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-        payload: 'open_reminders',
-      );
-    }
-
-    _notificationIdMap[item.id] = ids;
-  }
-
-  Future<void> cancelReminder(int id, {bool removeSavedReminder = true}) async {
-    final ids = _notificationIdMap[id] ?? <int>[id];
-    for (final notificationId in ids) {
-      await _plugin.cancel(notificationId);
-    }
-    _notificationIdMap.remove(id);
-
-    if (removeSavedReminder) {
-      _savedReminders.removeWhere((element) => element.id == id);
-    }
-  }
-
   tz.TZDateTime _nextInstanceOfTime(TimeOfDay timeOfDay) {
     final now = tz.TZDateTime.now(tz.local);
-
     var scheduled = tz.TZDateTime(
       tz.local,
       now.year,
@@ -496,11 +626,7 @@ class NotificationService {
       timeOfDay.hour,
       timeOfDay.minute,
     );
-
-    if (scheduled.isBefore(now)) {
-      scheduled = scheduled.add(const Duration(days: 1));
-    }
-
+    if (scheduled.isBefore(now)) scheduled = scheduled.add(const Duration(days: 1));
     return scheduled;
   }
 }
