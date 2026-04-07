@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:video_player/video_player.dart';
 
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -51,10 +52,38 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.notificationService});
 
   final NotificationService notificationService;
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  late final VideoPlayerController _videoController;
+
+  @override
+  void initState() {
+    super.initState();
+    _videoController = VideoPlayerController.networkUrl(
+      Uri.parse('https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4'),
+    )..initialize().then((_) {
+      if (!mounted) return;
+      setState(() {});
+      _videoController
+        ..setLooping(true)
+        ..setVolume(0)
+        ..play();
+    });
+  }
+
+  @override
+  void dispose() {
+    _videoController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,11 +92,11 @@ class HomePage extends StatelessWidget {
       body: Column(
         children: [
           Expanded(
-            child: Center(
-              child: Text(
-                '필요한 기능을 선택하세요',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: _videoController.value.isInitialized
+                  ? VideoPlayer(_videoController)
+                  : const Center(child: CircularProgressIndicator()),
             ),
           ),
           Expanded(
@@ -357,6 +386,7 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
   final List<ReminderItem> _savedReminders = <ReminderItem>[];
   bool shouldOpenReminderPageOnLaunch = false;
+  final Map<int, List<int>> _notificationIdMap = <int, List<int>>{};
 
   List<ReminderItem> get reminders => List<ReminderItem>.unmodifiable(_savedReminders);
 
@@ -399,7 +429,8 @@ class NotificationService {
   Future<void> scheduleDailyReminder(ReminderItem item) async {
     _savedReminders.removeWhere((element) => element.id == item.id);
     _savedReminders.add(item);
-    final scheduledDate = _nextInstanceOfTime(item.time);
+
+    await cancelReminder(item.id, removeSavedReminder: false);
 
     const androidDetails = AndroidNotificationDetails(
       'medication_channel',
@@ -411,25 +442,47 @@ class NotificationService {
       enableVibration: true,
       category: AndroidNotificationCategory.alarm,
       visibility: NotificationVisibility.public,
+      ongoing: true,
+      autoCancel: false,
+      timeoutAfter: 60000,
     );
 
-    await _plugin.zonedSchedule(
-      item.id,
-      '복약 시간입니다',
-      '${item.medicineName} 복용할 시간이에요.',
-      scheduledDate,
-      const NotificationDetails(android: androidDetails),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.time,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      payload: 'open_reminders',
-    );
+    final ids = <int>[];
+    for (var i = 0; i < 6; i++) {
+      final notificationId = item.id + i;
+      final scheduledDate = _nextInstanceOfTime(item.time).add(
+        Duration(seconds: i * 10),
+      );
+
+      ids.add(notificationId);
+
+      await _plugin.zonedSchedule(
+        notificationId,
+        '복약 시간입니다',
+        '${item.medicineName} 복용할 시간이에요. (${i + 1}/6)',
+        scheduledDate,
+        const NotificationDetails(android: androidDetails),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'open_reminders',
+      );
+    }
+
+    _notificationIdMap[item.id] = ids;
   }
 
-  Future<void> cancelReminder(int id) async {
-    await _plugin.cancel(id);
-    _savedReminders.removeWhere((element) => element.id == id);
+  Future<void> cancelReminder(int id, {bool removeSavedReminder = true}) async {
+    final ids = _notificationIdMap[id] ?? <int>[id];
+    for (final notificationId in ids) {
+      await _plugin.cancel(notificationId);
+    }
+    _notificationIdMap.remove(id);
+
+    if (removeSavedReminder) {
+      _savedReminders.removeWhere((element) => element.id == id);
+    }
   }
 
   tz.TZDateTime _nextInstanceOfTime(TimeOfDay timeOfDay) {
