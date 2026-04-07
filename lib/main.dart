@@ -5,12 +5,24 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final notificationService = NotificationService();
-  await notificationService.initialize();
+  await notificationService.initialize(
+    onReminderTap: () {
+      appNavigatorKey.currentState?.pushNamed('/reminders');
+    },
+  );
 
   runApp(MyApp(notificationService: notificationService));
+
+  if (notificationService.shouldOpenReminderPageOnLaunch) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      appNavigatorKey.currentState?.pushNamed('/reminders');
+    });
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -21,6 +33,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: appNavigatorKey,
       title: '복약 알림',
       locale: const Locale('ko', 'KR'),
       supportedLocales: const [Locale('ko', 'KR'), Locale('en', 'US')],
@@ -31,6 +44,9 @@ class MyApp extends StatelessWidget {
       ],
       theme: ThemeData(colorSchemeSeed: Colors.teal, useMaterial3: true),
       home: HomePage(notificationService: notificationService),
+      routes: {
+        '/reminders': (_) => ReminderPage(notificationService: notificationService),
+      },
     );
   }
 }
@@ -68,12 +84,7 @@ class HomePage extends StatelessWidget {
                     title: '알림 등록',
                     subtitle: '복약 알림을 추가합니다.',
                     onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              ReminderPage(notificationService: notificationService),
-                        ),
-                      );
+                      Navigator.of(context).pushNamed('/reminders');
                     },
                   ),
                   HomeActionWidget(
@@ -345,16 +356,30 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   final List<ReminderItem> _savedReminders = <ReminderItem>[];
+  bool shouldOpenReminderPageOnLaunch = false;
 
   List<ReminderItem> get reminders => List<ReminderItem>.unmodifiable(_savedReminders);
 
-  Future<void> initialize() async {
+  Future<void> initialize({required VoidCallback onReminderTap}) async {
     await _configureLocalTimeZone();
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const settings = InitializationSettings(android: android);
 
-    await _plugin.initialize(settings);
+    await _plugin.initialize(
+      settings,
+      onDidReceiveNotificationResponse: (response) {
+        if (response.payload == 'open_reminders') {
+          onReminderTap();
+        }
+      },
+    );
+
+    final appLaunchDetails = await _plugin.getNotificationAppLaunchDetails();
+    if (appLaunchDetails?.didNotificationLaunchApp ?? false) {
+      final payload = appLaunchDetails?.notificationResponse?.payload;
+      shouldOpenReminderPageOnLaunch = payload == 'open_reminders';
+    }
 
     final androidPlugin = _plugin
         .resolvePlatformSpecificImplementation<
@@ -398,6 +423,7 @@ class NotificationService {
       matchDateTimeComponents: DateTimeComponents.time,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
+      payload: 'open_reminders',
     );
   }
 
