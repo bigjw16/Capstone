@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
@@ -15,6 +16,10 @@ final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setEnabledSystemUIMode(
+    SystemUiMode.manual,
+    overlays: SystemUiOverlay.values,
+  );
 
   final notificationService = NotificationService();
   await notificationService.initialize(
@@ -742,9 +747,8 @@ class NotificationService {
           channelDescription: '정해진 시간에 복약 알림을 제공합니다.',
           importance: Importance.max,
           priority: Priority.max,
-          playSound: false,
-          enableVibration: false,
-          silent: true,
+          playSound: true,
+          enableVibration: true,
           category: AndroidNotificationCategory.alarm,
           visibility: NotificationVisibility.public,
           fullScreenIntent: true,
@@ -781,9 +785,8 @@ class NotificationService {
           channelDescription: '정해진 시간에 복약 알림을 제공합니다.',
           importance: Importance.max,
           priority: Priority.max,
-          playSound: false,
-          enableVibration: false,
-          silent: true,
+          playSound: true,
+          enableVibration: true,
           category: AndroidNotificationCategory.alarm,
           visibility: NotificationVisibility.public,
           fullScreenIntent: true,
