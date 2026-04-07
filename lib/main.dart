@@ -77,20 +77,44 @@ class HomePage extends StatelessWidget {
                       );
                     },
                   ),
-                  const HomeActionWidget(
+                  HomeActionWidget(
                     icon: Icons.medication,
                     title: '복약 기록',
-                    subtitle: '준비 중인 기능입니다.',
+                    subtitle: '기록 화면으로 이동합니다.',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const PlaceholderPage(
+                          title: '복약 기록',
+                          message: '복약 기록 화면입니다.',
+                        ),
+                      ),
+                    ),
                   ),
-                  const HomeActionWidget(
+                  HomeActionWidget(
                     icon: Icons.show_chart,
                     title: '복약 통계',
-                    subtitle: '준비 중인 기능입니다.',
+                    subtitle: '통계 화면으로 이동합니다.',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const PlaceholderPage(
+                          title: '복약 통계',
+                          message: '복약 통계 화면입니다.',
+                        ),
+                      ),
+                    ),
                   ),
-                  const HomeActionWidget(
+                  HomeActionWidget(
                     icon: Icons.settings,
                     title: '설정',
-                    subtitle: '준비 중인 기능입니다.',
+                    subtitle: '설정 화면으로 이동합니다.',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const PlaceholderPage(
+                          title: '설정',
+                          message: '앱 설정 화면입니다.',
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -141,6 +165,25 @@ class HomeActionWidget extends StatelessWidget {
   }
 }
 
+class PlaceholderPage extends StatelessWidget {
+  const PlaceholderPage({
+    super.key,
+    required this.title,
+    required this.message,
+  });
+
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: Center(child: Text(message)),
+    );
+  }
+}
+
 class ReminderItem {
   ReminderItem({
     required this.id,
@@ -166,6 +209,12 @@ class _ReminderPageState extends State<ReminderPage> {
   final TextEditingController _nameController = TextEditingController();
   final List<ReminderItem> _reminders = <ReminderItem>[];
   TimeOfDay? _selectedTime;
+
+  @override
+  void initState() {
+    super.initState();
+    _reminders.addAll(widget.notificationService.reminders);
+  }
 
   @override
   void dispose() {
@@ -203,7 +252,9 @@ class _ReminderPageState extends State<ReminderPage> {
     await widget.notificationService.scheduleDailyReminder(item);
 
     setState(() {
-      _reminders.add(item);
+      _reminders
+        ..clear()
+        ..addAll(widget.notificationService.reminders);
       _nameController.clear();
       _selectedTime = null;
     });
@@ -214,7 +265,9 @@ class _ReminderPageState extends State<ReminderPage> {
   Future<void> _deleteReminder(ReminderItem item) async {
     await widget.notificationService.cancelReminder(item.id);
     setState(() {
-      _reminders.removeWhere((element) => element.id == item.id);
+      _reminders
+        ..clear()
+        ..addAll(widget.notificationService.reminders);
     });
   }
 
@@ -292,6 +345,9 @@ class _ReminderPageState extends State<ReminderPage> {
 class NotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
+  final List<ReminderItem> _savedReminders = <ReminderItem>[];
+
+  List<ReminderItem> get reminders => List<ReminderItem>.unmodifiable(_savedReminders);
 
   Future<void> initialize() async {
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -307,6 +363,8 @@ class NotificationService {
   }
 
   Future<void> scheduleDailyReminder(ReminderItem item) async {
+    _savedReminders.removeWhere((element) => element.id == item.id);
+    _savedReminders.add(item);
     final scheduledDate = _nextInstanceOfTime(item.time);
 
     const androidDetails = AndroidNotificationDetails(
@@ -332,6 +390,7 @@ class NotificationService {
 
   Future<void> cancelReminder(int id) async {
     await _plugin.cancel(id);
+    _savedReminders.removeWhere((element) => element.id == id);
   }
 
   tz.TZDateTime _nextInstanceOfTime(TimeOfDay timeOfDay) {
