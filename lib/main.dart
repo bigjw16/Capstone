@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  tz.initializeTimeZones();
-
   final notificationService = NotificationService();
   await notificationService.initialize();
 
@@ -350,16 +349,26 @@ class NotificationService {
   List<ReminderItem> get reminders => List<ReminderItem>.unmodifiable(_savedReminders);
 
   Future<void> initialize() async {
+    await _configureLocalTimeZone();
+
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const settings = InitializationSettings(android: android);
 
     await _plugin.initialize(settings);
 
-    await _plugin
+    final androidPlugin = _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.requestNotificationsPermission();
+        >();
+
+    await androidPlugin?.requestNotificationsPermission();
+    await androidPlugin?.requestExactAlarmsPermission();
+  }
+
+  Future<void> _configureLocalTimeZone() async {
+    tz.initializeTimeZones();
+    final timezoneName = await FlutterTimezone.getLocalTimezone();
+    tz.setLocalLocation(tz.getLocation(timezoneName));
   }
 
   Future<void> scheduleDailyReminder(ReminderItem item) async {
@@ -373,6 +382,10 @@ class NotificationService {
       channelDescription: '정해진 시간에 복약 알림을 제공합니다.',
       importance: Importance.max,
       priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+      category: AndroidNotificationCategory.alarm,
+      visibility: NotificationVisibility.public,
     );
 
     await _plugin.zonedSchedule(
