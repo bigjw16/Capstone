@@ -527,6 +527,7 @@ class NotificationService {
 
     await androidPlugin?.requestNotificationsPermission();
     await androidPlugin?.requestExactAlarmsPermission();
+    await androidPlugin?.requestFullScreenIntentPermission();
   }
 
   Future<void> scheduleDailyReminder(ReminderItem item) async {
@@ -551,6 +552,7 @@ class NotificationService {
           category: AndroidNotificationCategory.alarm,
           visibility: NotificationVisibility.public,
           fullScreenIntent: true,
+          audioAttributesUsage: AudioAttributesUsage.alarm,
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -588,6 +590,7 @@ class NotificationService {
           category: AndroidNotificationCategory.alarm,
           visibility: NotificationVisibility.public,
           fullScreenIntent: true,
+          audioAttributesUsage: AudioAttributesUsage.alarm,
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
