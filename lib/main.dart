@@ -58,46 +58,39 @@ class HomePage extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: Column(
+              child: GridView.count(
+                crossAxisCount: 2,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                physics: const NeverScrollableScrollPhysics(),
                 children: [
-                  Expanded(
-                    child: HomeActionWidget(
-                      icon: Icons.add_alert,
-                      title: '알림 등록',
-                      subtitle: '복약 알림을 추가합니다.',
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                ReminderPage(notificationService: notificationService),
-                          ),
-                        );
-                      },
-                    ),
+                  HomeActionWidget(
+                    icon: Icons.add_alert,
+                    title: '알림 등록',
+                    subtitle: '복약 알림을 추가합니다.',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              ReminderPage(notificationService: notificationService),
+                        ),
+                      );
+                    },
                   ),
-                  const SizedBox(height: 8),
-                  const Expanded(
-                    child: HomeActionWidget(
-                      icon: Icons.medication,
-                      title: '복약 기록',
-                      subtitle: '준비 중인 기능입니다.',
-                    ),
+                  const HomeActionWidget(
+                    icon: Icons.medication,
+                    title: '복약 기록',
+                    subtitle: '준비 중인 기능입니다.',
                   ),
-                  const SizedBox(height: 8),
-                  const Expanded(
-                    child: HomeActionWidget(
-                      icon: Icons.show_chart,
-                      title: '복약 통계',
-                      subtitle: '준비 중인 기능입니다.',
-                    ),
+                  const HomeActionWidget(
+                    icon: Icons.show_chart,
+                    title: '복약 통계',
+                    subtitle: '준비 중인 기능입니다.',
                   ),
-                  const SizedBox(height: 8),
-                  const Expanded(
-                    child: HomeActionWidget(
-                      icon: Icons.settings,
-                      title: '설정',
-                      subtitle: '준비 중인 기능입니다.',
-                    ),
+                  const HomeActionWidget(
+                    icon: Icons.settings,
+                    title: '설정',
+                    subtitle: '준비 중인 기능입니다.',
                   ),
                 ],
               ),
@@ -131,20 +124,14 @@ class HomeActionWidget extends StatelessWidget {
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icon, size: 32),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: Theme.of(context).textTheme.titleMedium),
-                    Text(subtitle),
-                  ],
-                ),
-              ),
+              const SizedBox(height: 8),
+              Text(title, style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 4),
+              Text(subtitle, textAlign: TextAlign.center),
               if (onTap != null) const Icon(Icons.chevron_right),
             ],
           ),
