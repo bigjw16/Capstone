@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>환자/병원 관리 웹 포털</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 24px;
+        max-width: 900px;
+      }
+      .card {
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      label {
+        display: block;
+        margin-top: 8px;
+        font-weight: 600;
+      }
+      input, textarea, button {
+        margin-top: 6px;
+        padding: 8px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      button {
+        cursor: pointer;
+      }
+      ul {
+        padding-left: 18px;
+      }
+      .hint {
+        color: #555;
+        font-size: 0.9rem;
+      }
+      .ok {
+        color: #0f7a0f;
+      }
+      .err {
+        color: #b00020;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>환자/병원 정보 입력 + 복약시간 조회</h1>
+    <p class="hint">Firebase 설정값을 채운 뒤 사용하세요.</p>
+    <p id="authStatus" class="hint">인증 상태 확인 중...</p>
+
+    <div class="card">
+      <h2>1) 병원 정보 입력</h2>
+      <label>병원명</label>
+      <input id="hospitalName" placeholder="예: 서울메디컬센터" />
+      <label>주소</label>
+      <input id="hospitalAddress" placeholder="예: 서울시 강남구 ..." />
+      <label>연락처</label>
+      <input id="hospitalPhone" placeholder="예: 02-1234-5678" />
+      <button id="saveHospitalBtn">병원 저장</button>
+      <p id="hospitalResult" class="hint"></p>
+    </div>
+
+    <div class="card">
+      <h2>2) 환자 정보 입력</h2>
+      <label>환자명</label>
+      <input id="patientName" />
+      <label>생년월일 (YYYY-MM-DD)</label>
+      <input id="patientBirthDate" />
+      <label>병원 ID</label>
+      <input id="patientHospitalId" placeholder="위에서 저장한 hospitalId" />
+      <label>보호자 이름</label>
+      <input id="guardianName" />
+      <label>보호자 연락처</label>
+      <input id="guardianPhone" />
+      <button id="savePatientBtn">환자 저장</button>
+      <p id="patientResult" class="hint"></p>
+    </div>
+
+    <div class="card">
+      <h2>3) 환자 복약시간 조회</h2>
+      <label>환자 ID</label>
+      <input id="queryPatientId" placeholder="patientId 입력" />
+      <button id="loadMedBtn">복약시간 불러오기</button>
+      <ul id="medList"></ul>
+    </div>
+
+    <script type="module">
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js';
+      import {
+        getAuth,
+        signInAnonymously,
+        onAuthStateChanged,
+      } from 'https://www.gstatic.com/firebasejs/11.7.1/firebase-auth.js';
+      import {
+        getFirestore,
+        addDoc,
+        setDoc,
+        doc,
+        collection,
+        serverTimestamp,
+        query,
+        orderBy,
+        getDocs,
+      } from 'https://www.gstatic.com/firebasejs/11.7.1/firebase-firestore.js';
+
+      // TODO: 프로젝트별 설정으로 교체
+      const firebaseConfig = {
+        apiKey: 'YOUR_API_KEY',
+        authDomain: 'YOUR_AUTH_DOMAIN',
+        projectId: 'YOUR_PROJECT_ID',
+        storageBucket: 'YOUR_STORAGE_BUCKET',
+        messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
+        appId: 'YOUR_APP_ID',
+      };
+
+      const authStatus = document.getElementById('authStatus');
+
+      const configHasPlaceholder = (value) =>
+        !value || String(value).startsWith('YOUR_');
+
+      const configInvalid =
+        configHasPlaceholder(firebaseConfig.apiKey) ||
+        configHasPlaceholder(firebaseConfig.projectId) ||
+        configHasPlaceholder(firebaseConfig.appId);
+
+      if (configInvalid) {
+        authStatus.className = 'hint err';
+        authStatus.textContent =
+          'Firebase 설정값이 비어 있습니다. index.html의 firebaseConfig를 실제 값으로 교체하세요.';
+      }
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      const hospitalName = document.getElementById('hospitalName');
+      const hospitalAddress = document.getElementById('hospitalAddress');
+      const hospitalPhone = document.getElementById('hospitalPhone');
+      const saveHospitalBtn = document.getElementById('saveHospitalBtn');
+      const hospitalResult = document.getElementById('hospitalResult');
+
+      const patientName = document.getElementById('patientName');
+      const patientBirthDate = document.getElementById('patientBirthDate');
+      const patientHospitalId = document.getElementById('patientHospitalId');
+      const guardianName = document.getElementById('guardianName');
+      const guardianPhone = document.getElementById('guardianPhone');
+      const savePatientBtn = document.getElementById('savePatientBtn');
+      const patientResult = document.getElementById('patientResult');
+
+      const queryPatientId = document.getElementById('queryPatientId');
+      const loadMedBtn = document.getElementById('loadMedBtn');
+      const medList = document.getElementById('medList');
+
+      function setButtonsEnabled(enabled) {
+        saveHospitalBtn.disabled = !enabled;
+        savePatientBtn.disabled = !enabled;
+        loadMedBtn.disabled = !enabled;
+      }
+
+      if (configInvalid) {
+        setButtonsEnabled(false);
+      }
+
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          authStatus.className = 'hint ok';
+          authStatus.textContent = `인증 완료 (uid: ${user.uid})`;
+        } else if (!configInvalid) {
+          authStatus.className = 'hint err';
+          authStatus.textContent = '인증되지 않음';
+        }
+      });
+
+      async function ensureSignedIn() {
+        if (configInvalid) {
+          throw new Error('firebaseConfig가 유효하지 않습니다. Firebase Console의 Web 앱 설정값으로 교체하세요.');
+        }
+
+        if (auth.currentUser) return;
+
+        try {
+          await signInAnonymously(auth);
+        } catch (error) {
+          if (error?.code === 'auth/api-key-not-valid' || String(error?.message).includes('api-key-not-valid')) {
+            throw new Error('API 키가 유효하지 않습니다. Firebase Console > 프로젝트 설정 > Web 앱의 apiKey를 다시 복사하세요.');
+          }
+          throw error;
+        }
+      }
+
+      function setResult(el, message, isError = false) {
+        el.className = isError ? 'hint err' : 'hint ok';
+        el.textContent = message;
+      }
+
+      saveHospitalBtn.addEventListener('click', async () => {
+        try {
+          await ensureSignedIn();
+          const docRef = await addDoc(collection(db, 'hospitals'), {
+            name: hospitalName.value,
+            address: hospitalAddress.value,
+            phone: hospitalPhone.value,
+            createdAt: serverTimestamp(),
+          });
+
+          setResult(hospitalResult, `저장 완료 hospitalId: ${docRef.id}`);
+        } catch (error) {
+          setResult(hospitalResult, `저장 실패: ${error.message}`, true);
+        }
+      });
+
+      savePatientBtn.addEventListener('click', async () => {
+        try {
+          await ensureSignedIn();
+
+          const patientKey = patientName.value.trim();
+          if (!patientKey) {
+            throw new Error('환자명을 입력하세요. (환자 ID로 사용됩니다)');
+          }
+
+          await setDoc(doc(db, 'patients', patientKey), {
+            name: patientKey,
+            birthDate: patientBirthDate.value,
+            hospitalId: patientHospitalId.value,
+            guardianName: guardianName.value,
+            guardianPhone: guardianPhone.value,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          }, { merge: true });
+
+          setResult(patientResult, `저장 완료 patientId(=환자명): ${patientKey}`);
+        } catch (error) {
+          setResult(patientResult, `저장 실패: ${error.message}`, true);
+        }
+      });
+
+      loadMedBtn.addEventListener('click', async () => {
+        medList.innerHTML = '';
+        const patientId = queryPatientId.value.trim();
+        if (!patientId) {
+          return;
+        }
+
+        try {
+          await ensureSignedIn();
+          const medRef = collection(db, `patients/${patientId}/medSchedules`);
+          const q = query(medRef, orderBy('createdAt', 'desc'));
+          const snap = await getDocs(q);
+
+          snap.forEach((doc) => {
+            const data = doc.data();
+            const item = document.createElement('li');
+            item.textContent = `${data.medicineName ?? ''} / 용량: ${data.dosage ?? ''} / 시간: ${(data.times ?? []).join(', ')}`;
+            medList.appendChild(item);
+          });
+        } catch (error) {
+          const item = document.createElement('li');
+          item.className = 'err';
+          item.textContent = `조회 실패: ${error.message}`;
+          medList.appendChild(item);
+        }
+      });
+
+      // 초기 진입 시 익명 로그인 시도 (규칙상 인증 필요)
+      if (!configInvalid) {
+        ensureSignedIn().catch((error) => {
+          authStatus.className = 'hint err';
+          authStatus.textContent = `인증 실패: ${error.message}`;
+        });
+      }
+    </script>
+  </body>
+</html>
