@@ -43,6 +43,10 @@
       .err {
         color: #b00020;
       }
+      .button-row {
+        display: flex;
+        gap: 8px;
+      }
     </style>
   </head>
   <body>
@@ -86,6 +90,28 @@
       <ul id="medList"></ul>
     </div>
 
+
+
+    <div class="card" id="scheduleSection">
+      <h2>4) 복약 알림 일정 등록</h2>
+      <label>환자 ID (환자명)</label>
+      <input id="schedulePatientId" placeholder="예: 홍길동" />
+      <label>약 이름</label>
+      <input id="scheduleMedicineName" placeholder="예: 혈압약" />
+      <label>시작 날짜</label>
+      <input id="scheduleDate" type="date" />
+      <label>알림 시간</label>
+      <input id="scheduleTime" type="time" />
+      <label><input id="repeatDaily" type="checkbox" /> 매일 반복</label>
+      <label>반복 종료일(선택)</label>
+      <input id="repeatUntilDate" type="date" />
+      <div class="button-row">
+        <button id="setNowBtn" type="button">현재 시각 채우기</button>
+        <button id="saveScheduleBtn">알림 스케줄 저장</button>
+      </div>
+      <p id="scheduleResult" class="hint"></p>
+    </div>
+
     <script type="module">
       import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js';
       import {
@@ -103,6 +129,7 @@
         query,
         orderBy,
         getDocs,
+        Timestamp,
       } from 'https://www.gstatic.com/firebasejs/11.7.1/firebase-firestore.js';
 
       // TODO: 프로젝트별 설정으로 교체
@@ -152,16 +179,41 @@
       const queryPatientId = document.getElementById('queryPatientId');
       const loadMedBtn = document.getElementById('loadMedBtn');
       const medList = document.getElementById('medList');
+      const schedulePatientId = document.getElementById('schedulePatientId');
+      const scheduleMedicineName = document.getElementById('scheduleMedicineName');
+      const scheduleDate = document.getElementById('scheduleDate');
+      const scheduleTime = document.getElementById('scheduleTime');
+      const repeatDaily = document.getElementById('repeatDaily');
+      const repeatUntilDate = document.getElementById('repeatUntilDate');
+      const setNowBtn = document.getElementById('setNowBtn');
+      const saveScheduleBtn = document.getElementById('saveScheduleBtn');
+      const scheduleResult = document.getElementById('scheduleResult');
 
       function setButtonsEnabled(enabled) {
         saveHospitalBtn.disabled = !enabled;
         savePatientBtn.disabled = !enabled;
         loadMedBtn.disabled = !enabled;
+        saveScheduleBtn.disabled = !enabled;
+        setNowBtn.disabled = !enabled;
       }
 
       if (configInvalid) {
         setButtonsEnabled(false);
       }
+
+      function fillScheduleWithNow() {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mi = String(now.getMinutes()).padStart(2, '0');
+        scheduleDate.value = `${yyyy}-${mm}-${dd}`;
+        scheduleTime.value = `${hh}:${mi}`;
+      }
+
+      setNowBtn.addEventListener('click', fillScheduleWithNow);
+      fillScheduleWithNow();
 
       onAuthStateChanged(auth, (user) => {
         if (user) {
@@ -260,6 +312,48 @@
           item.className = 'err';
           item.textContent = `조회 실패: ${error.message}`;
           medList.appendChild(item);
+        }
+      });
+
+      saveScheduleBtn.addEventListener('click', async () => {
+        try {
+          await ensureSignedIn();
+
+          const patientId = schedulePatientId.value.trim();
+          const medicineName = scheduleMedicineName.value.trim();
+          const dateText = scheduleDate.value;
+          const timeText = scheduleTime.value;
+          const isRepeatDaily = repeatDaily.checked;
+
+          if (!patientId || !medicineName || !dateText || !timeText) {
+            throw new Error('환자 ID, 약 이름, 날짜, 시간을 모두 입력하세요.');
+          }
+
+          const alarmDate = new Date(`${dateText}T${timeText}:00`);
+          if (Number.isNaN(alarmDate.getTime())) {
+            throw new Error('유효한 날짜/시간을 입력하세요.');
+          }
+
+          const until = isRepeatDaily
+            ? (repeatUntilDate.value ? new Date(`${repeatUntilDate.value}T23:59:59`) : new Date('2100-12-31T23:59:59'))
+            : alarmDate;
+
+          await addDoc(collection(db, `patients/${patientId}/medSchedules`), {
+            medicineName,
+            times: [timeText],
+            alarmDate: dateText,
+            alarmTime: timeText,
+            alarmAt: Timestamp.fromDate(alarmDate),
+            repeatDaily: isRepeatDaily,
+            repeatUntilAt: Timestamp.fromDate(until),
+            source: 'web',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+
+          setResult(scheduleResult, `알림 스케줄 저장 완료 (${patientId})`);
+        } catch (error) {
+          setResult(scheduleResult, `저장 실패: ${error.message}`, true);
         }
       });
 

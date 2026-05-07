@@ -214,19 +214,36 @@ class _MedicationCalendarWidgetState extends State<MedicationCalendarWidget> {
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
-          .collection('patients')
-          .doc('default-patient')
-          .collection('medSchedules')
-          .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(monthStart))
-          .where('createdAt', isLessThanOrEqualTo: Timestamp.fromDate(DateTime(monthEnd.year, monthEnd.month, monthEnd.day, 23, 59, 59)))
+          .collectionGroup('medSchedules')
+          .where(
+            'alarmAt',
+            isLessThanOrEqualTo: Timestamp.fromDate(
+              DateTime(monthEnd.year, monthEnd.month, monthEnd.day, 23, 59, 59),
+            ),
+          )
+          .where('repeatUntilAt', isGreaterThanOrEqualTo: Timestamp.fromDate(monthStart))
           .snapshots(),
       builder: (context, snapshot) {
         final marked = <DateTime>{};
         if (snapshot.hasData) {
           for (final doc in snapshot.data!.docs) {
-            final ts = doc.data()['createdAt'];
-            if (ts is Timestamp) {
-              marked.add(_dateOnly(ts.toDate()));
+            final data = doc.data();
+            final alarmTs = data['alarmAt'] ?? data['createdAt'];
+            final untilTs = data['repeatUntilAt'];
+            final isRepeatDaily = data['repeatDaily'] == true;
+            if (alarmTs is! Timestamp) continue;
+
+            final start = _dateOnly(alarmTs.toDate());
+            final until = untilTs is Timestamp ? _dateOnly(untilTs.toDate()) : start;
+
+            if (isRepeatDaily) {
+              final from = start.isAfter(monthStart) ? start : monthStart;
+              final to = until.isBefore(monthEnd) ? until : monthEnd;
+              for (DateTime d = from; !d.isAfter(to); d = d.add(const Duration(days: 1))) {
+                marked.add(_dateOnly(d));
+              }
+            } else if (!start.isBefore(monthStart) && !start.isAfter(monthEnd)) {
+              marked.add(start);
             }
           }
         }
@@ -343,6 +360,8 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
   static const _defaultPatientId = 'default-patient';
   final _medicineCtrl = TextEditingController();
   Duration _alarmTime = const Duration(hours: 8, minutes: 0);
+  bool _repeatDaily = false;
+  DateTime? _repeatUntilDate;
   String _status = '준비 완료';
 
   String _formatTime(Duration d) {
@@ -356,13 +375,30 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
       await _ensureSignedIn();
       setState(() => _status = '복약 알림 저장 중...');
 
+      final now = DateTime.now();
+      final alarmAt = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        _alarmTime.inHours,
+        _alarmTime.inMinutes % 60,
+      );
+      final repeatUntil = _repeatDaily
+          ? (_repeatUntilDate ?? DateTime(2100, 12, 31))
+          : alarmAt;
+
       await FirebaseFirestore.instance
           .collection('patients')
-          .doc(patientId)
+          .doc(_defaultPatientId)
           .collection('medSchedules')
           .add({
         'medicineName': _medicineCtrl.text.trim(),
         'times': [_formatTime(_alarmTime)],
+        'alarmAt': Timestamp.fromDate(alarmAt),
+        'repeatDaily': _repeatDaily,
+        'repeatUntilAt': Timestamp.fromDate(
+          DateTime(repeatUntil.year, repeatUntil.month, repeatUntil.day, 23, 59, 59),
+        ),
         'source': 'flutter',
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
@@ -425,6 +461,35 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
                           onChanged: (duration) => setState(() => _alarmTime = duration),
                         ),
                       ),
+
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: _repeatDaily,
+                            onChanged: (v) => setState(() => _repeatDaily = v ?? false),
+                          ),
+                          const Text('매일 반복'),
+                        ],
+                      ),
+                      if (_repeatDaily)
+                        TextButton(
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              firstDate: DateTime.now(),
+                              lastDate: DateTime(2100, 12, 31),
+                              initialDate: _repeatUntilDate ?? DateTime.now(),
+                            );
+                            if (picked != null) {
+                              setState(() => _repeatUntilDate = picked);
+                            }
+                          },
+                          child: Text(
+                            _repeatUntilDate == null
+                                ? '반복 종료일 선택 (미선택 시 2100-12-31)'
+                                : '반복 종료일: ${_repeatUntilDate!.year}-${_repeatUntilDate!.month.toString().padLeft(2, '0')}-${_repeatUntilDate!.day.toString().padLeft(2, '0')}',
+                          ),
+                        ),
                       FilledButton(
                         onPressed: saveMedicationSchedule,
                         child: const Text('알림 등록 저장'),
