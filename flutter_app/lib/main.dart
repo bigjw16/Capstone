@@ -231,16 +231,20 @@ class _MedicationCalendarWidgetState extends State<MedicationCalendarWidget> {
             final alarmTs = data['alarmAt'] ?? data['createdAt'];
             final untilTs = data['repeatUntilAt'];
             final isRepeatDaily = data['repeatDaily'] == true;
+            final weekdays = (data['repeatWeekdays'] as List<dynamic>? ?? []).map((e) => e as int).toSet();
             if (alarmTs is! Timestamp) continue;
 
             final start = _dateOnly(alarmTs.toDate());
             final until = untilTs is Timestamp ? _dateOnly(untilTs.toDate()) : start;
 
-            if (isRepeatDaily) {
+            if (isRepeatDaily || weekdays.isNotEmpty) {
               final from = start.isAfter(monthStart) ? start : monthStart;
               final to = until.isBefore(monthEnd) ? until : monthEnd;
               for (DateTime d = from; !d.isAfter(to); d = d.add(const Duration(days: 1))) {
-                marked.add(_dateOnly(d));
+                final weekday = d.weekday % 7;
+                if (isRepeatDaily || weekdays.contains(weekday)) {
+                  marked.add(_dateOnly(d));
+                }
               }
             } else if (!start.isBefore(monthStart) && !start.isAfter(monthEnd)) {
               marked.add(start);
@@ -362,6 +366,7 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
   Duration _alarmTime = const Duration(hours: 8, minutes: 0);
   bool _repeatDaily = false;
   DateTime? _repeatUntilDate;
+  final List<bool> _weekdayRepeats = List<bool>.filled(7, false);
   String _status = '준비 완료';
 
   String _formatTime(Duration d) {
@@ -383,7 +388,12 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
         _alarmTime.inHours,
         _alarmTime.inMinutes % 60,
       );
-      final repeatUntil = _repeatDaily
+      final selectedWeekdays = <int>[];
+      for (int i = 0; i < _weekdayRepeats.length; i++) {
+        if (_weekdayRepeats[i]) selectedWeekdays.add(i);
+      }
+
+      final repeatUntil = (_repeatDaily || selectedWeekdays.isNotEmpty)
           ? (_repeatUntilDate ?? DateTime(2100, 12, 31))
           : alarmAt;
 
@@ -396,6 +406,7 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
         'times': [_formatTime(_alarmTime)],
         'alarmAt': Timestamp.fromDate(alarmAt),
         'repeatDaily': _repeatDaily,
+        'repeatWeekdays': selectedWeekdays,
         'repeatUntilAt': Timestamp.fromDate(
           DateTime(repeatUntil.year, repeatUntil.month, repeatUntil.day, 23, 59, 59),
         ),
@@ -471,7 +482,19 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
                           const Text('매일 반복'),
                         ],
                       ),
-                      if (_repeatDaily)
+
+                      Wrap(
+                        spacing: 6,
+                        children: List.generate(7, (index) {
+                          const labels = ['일', '월', '화', '수', '목', '금', '토'];
+                          return FilterChip(
+                            label: Text(labels[index]),
+                            selected: _weekdayRepeats[index],
+                            onSelected: (v) => setState(() => _weekdayRepeats[index] = v),
+                          );
+                        }),
+                      ),
+                      if (_repeatDaily || _weekdayRepeats.contains(true))
                         TextButton(
                           onPressed: () async {
                             final picked = await showDatePicker(

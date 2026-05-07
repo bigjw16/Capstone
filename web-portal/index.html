@@ -103,6 +103,16 @@
       <label>알림 시간</label>
       <input id="scheduleTime" type="time" />
       <label><input id="repeatDaily" type="checkbox" /> 매일 반복</label>
+      <label>요일 반복 (일~토)</label>
+      <div id="weekdayRow" style="display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:6px;">
+        <label><input type="checkbox" class="weekdayCheck" value="0" />일</label>
+        <label><input type="checkbox" class="weekdayCheck" value="1" />월</label>
+        <label><input type="checkbox" class="weekdayCheck" value="2" />화</label>
+        <label><input type="checkbox" class="weekdayCheck" value="3" />수</label>
+        <label><input type="checkbox" class="weekdayCheck" value="4" />목</label>
+        <label><input type="checkbox" class="weekdayCheck" value="5" />금</label>
+        <label><input type="checkbox" class="weekdayCheck" value="6" />토</label>
+      </div>
       <label>반복 종료일(선택)</label>
       <input id="repeatUntilDate" type="date" />
       <div class="button-row">
@@ -188,6 +198,7 @@
       const setNowBtn = document.getElementById('setNowBtn');
       const saveScheduleBtn = document.getElementById('saveScheduleBtn');
       const scheduleResult = document.getElementById('scheduleResult');
+      const weekdayChecks = Array.from(document.querySelectorAll('.weekdayCheck'));
 
       function setButtonsEnabled(enabled) {
         saveHospitalBtn.disabled = !enabled;
@@ -324,6 +335,7 @@
           const dateText = scheduleDate.value;
           const timeText = scheduleTime.value;
           const isRepeatDaily = repeatDaily.checked;
+          const repeatWeekdays = weekdayChecks.filter((el) => el.checked).map((el) => Number(el.value));
 
           if (!patientId || !medicineName || !dateText || !timeText) {
             throw new Error('환자 ID, 약 이름, 날짜, 시간을 모두 입력하세요.');
@@ -334,7 +346,7 @@
             throw new Error('유효한 날짜/시간을 입력하세요.');
           }
 
-          const until = isRepeatDaily
+          const until = (isRepeatDaily || repeatWeekdays.length > 0)
             ? (repeatUntilDate.value ? new Date(`${repeatUntilDate.value}T23:59:59`) : new Date('2100-12-31T23:59:59'))
             : alarmDate;
 
@@ -345,13 +357,14 @@
             alarmTime: timeText,
             alarmAt: Timestamp.fromDate(alarmDate),
             repeatDaily: isRepeatDaily,
+            repeatWeekdays,
             repeatUntilAt: Timestamp.fromDate(until),
             source: 'web',
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
           });
 
-          setResult(scheduleResult, `알림 스케줄 저장 완료 (${patientId})`);
+          setResult(scheduleResult, `알림 스케줄 저장 완료 (${patientId}) / 요일반복: ${repeatWeekdays.join(',') || '없음'}`);
         } catch (error) {
           setResult(scheduleResult, `저장 실패: ${error.message}`, true);
         }
