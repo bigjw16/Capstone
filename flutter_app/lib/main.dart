@@ -23,6 +23,10 @@ Future<void> _ensureSignedIn() async {
   await FirebaseAuth.instance.signInAnonymously();
 }
 
+class PatientSession {
+  static final ValueNotifier<String?> patientId = ValueNotifier<String?>(null);
+}
+
 class PatientMedSyncApp extends StatelessWidget {
   const PatientMedSyncApp({super.key, this.startupError});
 
@@ -222,11 +226,12 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   bool _isPatientLoggedIn = false;
 
   Future<void> _openSettingsLogin() async {
-    final result = await Navigator.of(context).push<bool>(
+    final result = await Navigator.of(context).push<String>(
       MaterialPageRoute(builder: (_) => const SettingsLoginPage()),
     );
 
-    if (result == true) {
+    if (result != null) {
+      PatientSession.patientId.value = result;
       setState(() => _isPatientLoggedIn = true);
     }
   }
@@ -491,7 +496,6 @@ class NotificationRegisterPage extends StatefulWidget {
 }
 
 class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
-  static const _defaultPatientId = 'default-patient';
   final _medicineCtrl = TextEditingController();
   Duration _alarmTime = const Duration(hours: 8, minutes: 0);
   bool _repeatDaily = false;
@@ -529,7 +533,7 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
 
       await FirebaseFirestore.instance
           .collection('patients')
-          .doc(_defaultPatientId)
+          .doc(PatientSession.patientId.value ?? 'default-patient')
           .collection('medSchedules')
           .add({
         'medicineName': _medicineCtrl.text.trim(),
@@ -566,8 +570,9 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
 
   @override
   Widget build(BuildContext context) {
+    final currentPatientId = PatientSession.patientId.value ?? 'default-patient';
     return Scaffold(
-      appBar: AppBar(title: const Text('알림등록')),
+      appBar: AppBar(title: Text('알림등록 ($currentPatientId)')),
       body: Column(
         children: [
           Expanded(
@@ -668,7 +673,7 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
                         child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                           stream: FirebaseFirestore.instance
                               .collection('patients')
-                              .doc(_defaultPatientId)
+                              .doc(currentPatientId)
                               .collection('medSchedules')
                               .orderBy('createdAt', descending: true)
                               .limit(30)
@@ -794,7 +799,7 @@ class _MedicationStatsPageState extends State<MedicationStatsPage> {
   String _status = '준비 완료';
 
   Future<void> loadPatientAndHospital({String? patientIdFromList}) async {
-    final patientId = (patientIdFromList ?? _patientIdCtrl.text).trim();
+    final patientId = (patientIdFromList ?? PatientSession.patientId.value ?? _patientIdCtrl.text).trim();
     if (patientId.isEmpty) {
       _showMessage('환자 ID(환자명)를 입력하세요.');
       return;
@@ -887,17 +892,14 @@ class _MedicationStatsPageState extends State<MedicationStatsPage> {
           const SizedBox(height: 4),
           Text('상태: $_status'),
           const SizedBox(height: 12),
-          const Text(
-            '웹에서 저장된 환자 목록',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
+          const Text('로그인한 환자 정보', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           SizedBox(
             height: 200,
             child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: FirebaseFirestore.instance
                   .collection('patients')
-                  .orderBy('createdAt', descending: true)
+                  .where(FieldPath.documentId, isEqualTo: PatientSession.patientId.value)
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
@@ -1060,7 +1062,8 @@ class _SettingsLoginPageState extends State<SettingsLoginPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('로그인 성공')),
         );
-        Navigator.of(context).pop(true);
+        PatientSession.patientId.value = name;
+        Navigator.of(context).pop(name);
       }
     } catch (e) {
       setState(() => _status = '로그인 오류: $e');
