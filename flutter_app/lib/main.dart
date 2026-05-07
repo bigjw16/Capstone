@@ -34,8 +34,23 @@ class PatientMedSyncApp extends StatelessWidget {
       title: 'Patient Med Sync',
       theme: ThemeData(colorSchemeSeed: Colors.teal, useMaterial3: true),
       home: startupError == null
-          ? const TodayHomePage()
+          ? const SwipeHomeContainer()
           : StartupErrorScreen(errorText: startupError!),
+    );
+  }
+}
+
+class SwipeHomeContainer extends StatelessWidget {
+  const SwipeHomeContainer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return PageView(
+      scrollDirection: Axis.horizontal,
+      children: const [
+        TodayHomePage(), // 1페이지(추가한 홈페이지)
+        HomeDashboardScreen(), // 2페이지(기존 홈페이지)
+      ],
     );
   }
 }
