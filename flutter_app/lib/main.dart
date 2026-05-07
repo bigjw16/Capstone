@@ -92,10 +92,10 @@ class TodayHomePage extends StatelessWidget {
         actions: [
           IconButton(
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const HomeDashboardScreen()),
+              MaterialPageRoute(builder: (_) => const SettingsLoginPage()),
             ),
-            icon: const Icon(Icons.dashboard),
-            tooltip: '대시보드 이동',
+            icon: const Icon(Icons.settings),
+            tooltip: '설정',
           ),
         ],
       ),
