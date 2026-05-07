@@ -34,8 +34,123 @@ class PatientMedSyncApp extends StatelessWidget {
       title: 'Patient Med Sync',
       theme: ThemeData(colorSchemeSeed: Colors.teal, useMaterial3: true),
       home: startupError == null
-          ? const HomeDashboardScreen()
+          ? const TodayHomePage()
           : StartupErrorScreen(errorText: startupError!),
+    );
+  }
+}
+
+class TodayHomePage extends StatelessWidget {
+  const TodayHomePage({super.key});
+
+  bool _isDueToday(Map<String, dynamic> data, DateTime today) {
+    final alarmTs = data['alarmAt'];
+    if (alarmTs is! Timestamp) return false;
+    final alarmAt = alarmTs.toDate();
+    final repeatDaily = data['repeatDaily'] == true;
+    final repeatWeekdays = (data['repeatWeekdays'] as List<dynamic>? ?? [])
+        .map((e) => e as int)
+        .toSet();
+    final repeatUntilTs = data['repeatUntilAt'];
+    final repeatUntil = repeatUntilTs is Timestamp ? repeatUntilTs.toDate() : alarmAt;
+    final startDay = DateTime(alarmAt.year, alarmAt.month, alarmAt.day);
+    final endDay = DateTime(repeatUntil.year, repeatUntil.month, repeatUntil.day, 23, 59, 59);
+    final todayDay = DateTime(today.year, today.month, today.day);
+
+    if (todayDay.isBefore(startDay) || todayDay.isAfter(endDay)) return false;
+    if (repeatDaily) return true;
+    if (repeatWeekdays.isNotEmpty) return repeatWeekdays.contains(today.weekday % 7);
+    return todayDay.year == startDay.year &&
+        todayDay.month == startDay.month &&
+        todayDay.day == startDay.day;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final today = DateTime.now();
+    final todayText =
+        '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('홈페이지'),
+        actions: [
+          IconButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const HomeDashboardScreen()),
+            ),
+            icon: const Icon(Icons.dashboard),
+            tooltip: '대시보드 이동',
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: Card(
+              margin: const EdgeInsets.all(12),
+              child: Center(
+                child: Text(
+                  '오늘 날짜: $todayText',
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Card(
+              margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: const Center(
+                child: Text('개발중', style: TextStyle(fontSize: 20, color: Colors.grey)),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Card(
+              margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('오늘 먹어야 하는 약', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                        stream: FirebaseFirestore.instance
+                            .collection('patients')
+                            .doc('default-patient')
+                            .collection('medSchedules')
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasError) return Text('조회 실패: ${snapshot.error}');
+                          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                          final dueDocs = snapshot.data!.docs
+                              .where((d) => _isDueToday(d.data(), today))
+                              .toList();
+                          if (dueDocs.isEmpty) return const Text('오늘 복약 예정이 없습니다.');
+                          return ListView.builder(
+                            itemCount: dueDocs.length,
+                            itemBuilder: (_, i) {
+                              final data = dueDocs[i].data();
+                              final times = (data['times'] as List<dynamic>? ?? []).join(', ');
+                              return ListTile(
+                                dense: true,
+                                title: Text(data['medicineName']?.toString() ?? '-'),
+                                subtitle: Text('시간: $times'),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
