@@ -798,6 +798,14 @@ class _MedicationStatsPageState extends State<MedicationStatsPage> {
   List<QueryDocumentSnapshot<Map<String, dynamic>>> _medScheduleDocs = [];
   String _status = '준비 완료';
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      loadPatientAndHospital();
+    });
+  }
+
   Future<void> loadPatientAndHospital({String? patientIdFromList}) async {
     final patientId = (patientIdFromList ?? PatientSession.patientId.value ?? _patientIdCtrl.text).trim();
     if (patientId.isEmpty) {
@@ -881,70 +889,11 @@ class _MedicationStatsPageState extends State<MedicationStatsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '미로그인';
-
     return Scaffold(
       appBar: AppBar(title: const Text('복약통계')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('인증 UID: $uid', style: const TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
-          Text('상태: $_status'),
-          const SizedBox(height: 12),
-          const Text('로그인한 환자 정보', style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 200,
-            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: FirebaseFirestore.instance
-                  .collection('patients')
-                  .where(FieldPath.documentId, isEqualTo: PatientSession.patientId.value)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Text('환자 목록 조회 실패: ${snapshot.error}');
-                }
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                final docs = snapshot.data!.docs;
-                if (docs.isEmpty) {
-                  return const Text('환자 데이터가 없습니다. 웹에서 먼저 환자를 등록하세요.');
-                }
-
-                return ListView.separated(
-                  itemCount: docs.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final doc = docs[index];
-                    final data = doc.data();
-                    return ListTile(
-                      dense: true,
-                      title: Text(data['name'] ?? '이름 없음'),
-                      subtitle: Text('patientId(=환자명): ${doc.id} / hospitalId: ${data['hospitalId'] ?? '-'}'),
-                      onTap: () => loadPatientAndHospital(patientIdFromList: doc.id),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _patientIdCtrl,
-            decoration: const InputDecoration(
-              labelText: '환자 ID (환자명과 동일, 직접 입력 또는 목록 탭)',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 8),
-          FilledButton(
-            onPressed: loadPatientAndHospital,
-            child: const Text('환자/병원/복약 정보 불러오기'),
-          ),
-          const SizedBox(height: 16),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(12),
@@ -970,6 +919,20 @@ class _MedicationStatsPageState extends State<MedicationStatsPage> {
                   Text('주소: ${_hospitalDoc?.data()?['address'] ?? '-'}'),
                   Text('연락처: ${_hospitalDoc?.data()?['phone'] ?? '-'}'),
                   Text('병원 문서 ID: ${_hospitalDoc?.id ?? '-'}'),
+                ],
+              ),
+            ),
+          ),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('약국 정보', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text('약국명: ${_patientDoc?.data()?['pharmacyName'] ?? '-'}'),
+                  Text('주소: ${_patientDoc?.data()?['pharmacyAddress'] ?? '-'}'),
+                  Text('연락처: ${_patientDoc?.data()?['pharmacyPhone'] ?? '-'}'),
                 ],
               ),
             ),
