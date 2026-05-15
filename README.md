@@ -121,10 +121,11 @@ http://localhost:8080/web-portal/
 
 ### 4) Flutter 앱 설정
 
-1. `flutter_app/pubspec.yaml` 의존성 설치 (`flutter pub get`)
-2. `flutterfire configure`로 Firebase 연결 파일 생성
-3. Firebase Console > Authentication > Sign-in method에서 **Anonymous** 활성화
-4. 앱 실행 (`flutter run`)
+1. 'flutter clean'로 flutter 의존성 초기화
+2. `flutter_app/pubspec.yaml` 의존성 설치 (`flutter pub get`)
+3. `flutterfire configure`로 Firebase 연결 파일 생성
+4. Firebase Console > Authentication > Sign-in method에서 **Anonymous** 활성화
+5. 앱 실행 (`flutter run`)
 
 > Flutter도 Firestore Rules(`request.auth != null`)를 만족해야 하므로, 예제 앱은 익명 로그인 후 조회/저장을 수행합니다.
 
