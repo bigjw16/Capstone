@@ -395,12 +395,12 @@ Firebase에 저장된 약 정보를 기반으로:
 ESP8266 / ESP32 등을 이용하여:
 
 * Firebase에서 알림 시간 조회
-* LED/Buzzer 제어
+* LCD/Buzzer 제어
 * 복약 알림 장치 제작 가능
 
 예시 기능:
 
-* 정해진 시간 LED 점등
+* 정해진 시간 LCD 점등
 * 스피커 음성 알림
 * 버튼 입력 후 Firebase 기록 저장
 
