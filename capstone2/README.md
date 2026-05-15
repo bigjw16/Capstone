@@ -187,7 +187,40 @@ Firebase Console
 ## 3. Firestore Rules 적용
 
 ```text
-firebase/firestore.rules
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // hospitals
+    match /hospitals/{document=**} {
+      allow read, write: if true;
+    }
+
+    // pharmacies
+    match /pharmacies/{document=**} {
+      allow read, write: if true;
+    }
+
+    // medicine food info
+    match /medicineFoodInfo/{document=**} {
+      allow read, write: if true;
+    }
+		
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+      }
+    
+    // patients
+    match /patients/{patientId} {
+      allow read, write: if true;
+
+      match /medSchedules/{scheduleId} {
+        allow read, write: if true;
+      }
+    }
+  }
+}
 ```
 
 파일 내용을 Firestore Rules 탭에 적용합니다.
@@ -226,12 +259,12 @@ patients/{patientId}/medSchedules/{scheduleId}
 
 ```js
 const firebaseConfig = {
-  apiKey: 'YOUR_API_KEY',
-  authDomain: 'YOUR_AUTH_DOMAIN',
-  projectId: 'YOUR_PROJECT_ID',
-  storageBucket: 'YOUR_STORAGE_BUCKET',
-  messagingSenderId: 'YOUR_SENDER_ID',
-  appId: 'YOUR_APP_ID',
+  apiKey: "AIzaSyB3n9cTNNBa2hFTVRddtMU9pG-Tha7n_u0",
+  authDomain: "test2-814d1.firebaseapp.com",
+  projectId: "test2-814d1",
+  storageBucket: "test2-814d1.firebasestorage.app",
+  messagingSenderId: "510762522149",
+  appId: "1:510762522149:web:12c8b9d20e7c2d1c7c51cc",
 };
 ```
 
