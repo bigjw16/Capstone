@@ -207,7 +207,8 @@ class TodayHomePage extends StatelessWidget {
     final todayText =
         '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
 
-    final currentPatientId = PatientSession.patientId.value ?? 'default-patient';
+    final currentPatientId =
+        PatientSession.patientId.value ?? 'default-patient';
 
     return ChickScaffold(
       title: '오늘의 정보',
@@ -222,42 +223,39 @@ class TodayHomePage extends StatelessWidget {
       child: Column(
         children: [
           const SizedBox(height: 8),
-
           Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 36),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: const BoxDecoration(
-              color: chickBrown,
-              shape: BoxShape.circle,
+            padding: const EdgeInsets.symmetric(horizontal: 36),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: const BoxDecoration(
+                    color: chickBrown,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                Container(
+                  width: 34,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: chickOrange,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: const BoxDecoration(
+                    color: chickBrown,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
             ),
           ),
-          Container(
-            width: 34,
-            height: 28,
-            decoration: BoxDecoration(
-              color: chickOrange,
-              borderRadius: BorderRadius.circular(18),
-            ),
-          ),
-          Container(
-            width: 38,
-            height: 38,
-            decoration: const BoxDecoration(
-              color: chickBrown,
-              shape: BoxShape.circle,
-            ),
-          ),
-        ],
-      ),
-    ),
-
-    const SizedBox(height: 16),
-
+          const SizedBox(height: 16),
           ChickCard(
             child: Center(
               child: Text(
@@ -305,7 +303,8 @@ class TodayHomePage extends StatelessWidget {
                         }
 
                         if (!snapshot.hasData) {
-                          return const Center(child: CircularProgressIndicator());
+                          return const Center(
+                              child: CircularProgressIndicator());
                         }
 
                         final dueDocs = snapshot.data!.docs
@@ -321,7 +320,8 @@ class TodayHomePage extends StatelessWidget {
                           itemBuilder: (_, i) {
                             final data = dueDocs[i].data();
                             final times =
-                                (data['times'] as List<dynamic>? ?? []).join(', ');
+                                (data['times'] as List<dynamic>? ?? [])
+                                    .join(', ');
 
                             return ListTile(
                               leading: const Icon(
@@ -380,7 +380,8 @@ class StartupErrorScreen extends StatelessWidget {
                 const SizedBox(height: 16),
                 if (isConfigError) ...[
                   const Text('해결 방법 (CONFIGURATION_NOT_FOUND):'),
-                  const Text('1) Firebase Console > Authentication > Sign-in method 진입'),
+                  const Text(
+                      '1) Firebase Console > Authentication > Sign-in method 진입'),
                   const Text('2) Anonymous 제공자 활성화'),
                   const Text('3) flutterfire configure 재실행 후 앱 재빌드'),
                   const Text('4) 선택한 Firebase 프로젝트가 맞는지 확인'),
@@ -446,9 +447,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        PatientSession.isLoggedIn
-                            ? '복약 관리 홈'
-                            : '로그인이 필요해요',
+                        PatientSession.isLoggedIn ? '복약 관리 홈' : '로그인이 필요해요',
                         style: const TextStyle(
                           color: chickBrown,
                           fontSize: 24,
@@ -467,9 +466,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 8),
-
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 36),
                 child: Row(
@@ -502,9 +499,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 16),
-
               Expanded(
                 flex: 5,
                 child: Padding(
@@ -519,9 +514,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 18),
-
               Expanded(
                 flex: 4,
                 child: Padding(
@@ -628,10 +621,9 @@ class _MedicationCalendarWidgetState extends State<MedicationCalendarWidget> {
             final untilTs = data['repeatUntilAt'];
             final isRepeatDaily = data['repeatDaily'] == true;
 
-            final weekdays =
-                (data['repeatWeekdays'] as List<dynamic>? ?? [])
-                    .map((e) => e as int)
-                    .toSet();
+            final weekdays = (data['repeatWeekdays'] as List<dynamic>? ?? [])
+                .map((e) => e as int)
+                .toSet();
 
             if (alarmTs is! Timestamp) continue;
 
@@ -719,8 +711,7 @@ class _MedicationCalendarWidgetState extends State<MedicationCalendarWidget> {
             Expanded(
               child: GridView.builder(
                 physics: const NeverScrollableScrollPhysics(),
-                gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 7,
                 ),
                 itemCount: cells.length,
@@ -743,9 +734,7 @@ class _MedicationCalendarWidgetState extends State<MedicationCalendarWidget> {
                         Text(
                           '${day.day}',
                           style: TextStyle(
-                            color: isCurrentMonth
-                                ? chickBrown
-                                : Colors.grey,
+                            color: isCurrentMonth ? chickBrown : Colors.grey,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
@@ -830,32 +819,32 @@ class NotificationRegisterPage extends StatefulWidget {
 
 class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
   Future<void> deleteMedicationSchedule(String docId) async {
-  try {
-    await FirebaseFirestore.instance
-        .collection('patients')
-        .doc(PatientSession.patientId.value ?? 'default-patient')
-        .collection('medSchedules')
-        .doc(docId)
-        .delete();
+    try {
+      await FirebaseFirestore.instance
+          .collection('patients')
+          .doc(PatientSession.patientId.value ?? 'default-patient')
+          .collection('medSchedules')
+          .doc(docId)
+          .delete();
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('알림이 삭제되었습니다.'),
-      ),
-    );
-  } catch (e) {
-    if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('알림이 삭제되었습니다.'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('삭제 실패: $e'),
-      ),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('삭제 실패: $e'),
+        ),
+      );
+    }
   }
-}
-  
+
   final _medicineCtrl = TextEditingController();
   Duration _alarmTime = const Duration(hours: 8, minutes: 0);
   bool _repeatDaily = false;
@@ -895,9 +884,29 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
       await FirebaseFirestore.instance
           .collection('patients')
           .doc(PatientSession.patientId.value ?? 'default-patient')
+          .collection('medSchedules');
+      final medicineName = _medicineCtrl.text.trim();
+
+      final medicineDoc = await FirebaseFirestore.instance
+          .collection('medicines')
+          .doc(medicineName)
+          .get();
+
+      List<String> ingredients = [];
+
+      if (medicineDoc.exists) {
+        ingredients = List<String>.from(
+          medicineDoc.data()?['ingredients'] ?? [],
+        );
+      }
+
+      await FirebaseFirestore.instance
+          .collection('patients')
+          .doc(PatientSession.patientId.value ?? 'default-patient')
           .collection('medSchedules')
           .add({
-        'medicineName': _medicineCtrl.text.trim(),
+        'medicineName': medicineName,
+        'ingredients': ingredients,
         'times': [_formatTime(_alarmTime)],
         'alarmAt': Timestamp.fromDate(alarmAt),
         'repeatDaily': _repeatDaily,
@@ -938,7 +947,8 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
 
   @override
   Widget build(BuildContext context) {
-    final currentPatientId = PatientSession.patientId.value ?? 'default-patient';
+    final currentPatientId =
+        PatientSession.patientId.value ?? 'default-patient';
 
     return ChickScaffold(
       title: '알림등록 ($currentPatientId)',
@@ -966,7 +976,7 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
                     decoration: chickInput('약 이름'),
                   ),
                   const SizedBox(height: 8),
-                  Text(                  
+                  Text(
                     '선택된 시간: ${_formatTime(_alarmTime)}',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
@@ -1063,7 +1073,8 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
                         }
 
                         if (!snapshot.hasData) {
-                          return const Center(child: CircularProgressIndicator());
+                          return const Center(
+                              child: CircularProgressIndicator());
                         }
 
                         final docs = snapshot.data!.docs;
@@ -1078,7 +1089,8 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
                             final data = docs[i].data();
 
                             final times =
-                                (data['times'] as List<dynamic>? ?? []).join(', ');
+                                (data['times'] as List<dynamic>? ?? [])
+                                    .join(', ');
 
                             final repeatDaily = data['repeatDaily'] == true;
 
@@ -1087,7 +1099,15 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
                                     .map((e) => e as int)
                                     .toList();
 
-                            const weekdayLabels = ['일', '월', '화', '수', '목', '금', '토'];
+                            const weekdayLabels = [
+                              '일',
+                              '월',
+                              '화',
+                              '수',
+                              '목',
+                              '금',
+                              '토'
+                            ];
 
                             String repeatText = '반복 없음';
 
@@ -1124,7 +1144,6 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
                                     Text('반복: $repeatText'),
                                   ],
                                 ),
-
                                 trailing: IconButton(
                                   icon: const Icon(
                                     Icons.delete,
@@ -1136,14 +1155,17 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
                                       builder: (_) {
                                         return AlertDialog(
                                           title: const Text('알림 삭제'),
-                                          content: const Text('저장된 알림을 삭제하시겠습니까?'),
+                                          content:
+                                              const Text('저장된 알림을 삭제하시겠습니까?'),
                                           actions: [
                                             TextButton(
-                                              onPressed: () => Navigator.pop(context, false),
+                                              onPressed: () =>
+                                                  Navigator.pop(context, false),
                                               child: const Text('취소'),
                                             ),
                                             FilledButton(
-                                              onPressed: () => Navigator.pop(context, true),
+                                              onPressed: () =>
+                                                  Navigator.pop(context, true),
                                               child: const Text('삭제'),
                                             ),
                                           ],
@@ -1152,7 +1174,8 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
                                     );
 
                                     if (result == true) {
-                                      await deleteMedicationSchedule(docs[i].id);
+                                      await deleteMedicationSchedule(
+                                          docs[i].id);
                                     }
                                   },
                                 ),
@@ -1299,9 +1322,10 @@ class _MedicationStatsPageState extends State<MedicationStatsPage> {
   }
 
   Future<void> loadPatientAndHospital({String? patientIdFromList}) async {
-    final patientId =
-        (patientIdFromList ?? PatientSession.patientId.value ?? _patientIdCtrl.text)
-            .trim();
+    final patientId = (patientIdFromList ??
+            PatientSession.patientId.value ??
+            _patientIdCtrl.text)
+        .trim();
 
     if (patientId.isEmpty) {
       _showMessage('환자 ID(환자명)를 입력하세요.');
@@ -1466,9 +1490,12 @@ class _MedicationStatsPageState extends State<MedicationStatsPage> {
                     color: chickBrown,
                   ),
                 ),
-                Text('약국명: ${_pharmacyDoc?.data()?['name'] ?? _patientDoc?.data()?['pharmacyName'] ?? '-'}'),
-                Text('주소: ${_pharmacyDoc?.data()?['address'] ?? _patientDoc?.data()?['pharmacyAddress'] ?? '-'}'),
-                Text('연락처: ${_pharmacyDoc?.data()?['phone'] ?? _patientDoc?.data()?['pharmacyPhone'] ?? '-'}')
+                Text(
+                    '약국명: ${_pharmacyDoc?.data()?['name'] ?? _patientDoc?.data()?['pharmacyName'] ?? '-'}'),
+                Text(
+                    '주소: ${_pharmacyDoc?.data()?['address'] ?? _patientDoc?.data()?['pharmacyAddress'] ?? '-'}'),
+                Text(
+                    '연락처: ${_pharmacyDoc?.data()?['phone'] ?? _patientDoc?.data()?['pharmacyPhone'] ?? '-'}')
               ],
             ),
           ),
@@ -1538,8 +1565,10 @@ class _SettingsLoginPageState extends State<SettingsLoginPage> {
       await _ensureSignedIn();
       setState(() => _status = '환자 정보 확인 중...');
 
-      final queryByDocId =
-          await FirebaseFirestore.instance.collection('patients').doc(name).get();
+      final queryByDocId = await FirebaseFirestore.instance
+          .collection('patients')
+          .doc(name)
+          .get();
 
       bool matched = false;
 
@@ -1830,10 +1859,8 @@ class _FoodManagementPageState extends State<FoodManagementPage> {
 
   Future<void> _loadFoodInfo() async {
     try {
-      final patientId =
-          PatientSession.patientId.value ?? 'default-patient';
+      final patientId = PatientSession.patientId.value ?? 'default-patient';
 
-      // 환자의 복약 스케줄 가져오기
       final medSnapshot = await FirebaseFirestore.instance
           .collection('patients')
           .doc(patientId)
@@ -1841,27 +1868,86 @@ class _FoodManagementPageState extends State<FoodManagementPage> {
           .get();
 
       final medicineNames = medSnapshot.docs
-          .map((e) => e.data()['medicineName']?.toString() ?? '')
+          .map(
+            (e) => e.data()['medicineName']?.toString() ?? '',
+          )
           .where((e) => e.isNotEmpty)
           .toSet()
           .toList();
 
       List<Map<String, dynamic>> loadedFoods = [];
 
-      // 약 이름 기준으로 음식 정보 검색
-      for (final medicine in medicineNames) {
-        final foodDoc = await FirebaseFirestore.instance
-            .collection('medicineFoodInfo')
-            .doc(medicine)
+      for (final medicineName in medicineNames) {
+        final medicineDoc = await FirebaseFirestore.instance
+            .collection('medicines')
+            .doc(medicineName)
             .get();
 
-        if (foodDoc.exists) {
-          loadedFoods.add(foodDoc.data()!);
+        if (!medicineDoc.exists) {
+          continue;
         }
+
+        final medicineData = medicineDoc.data() ?? {};
+
+        final ingredients = List<String>.from(
+          medicineData['ingredients'] ?? [],
+        );
+
+        final List<String> allGoodFoods = [];
+        final List<String> allBadFoods = [];
+        final List<String> allNotes = [];
+
+        for (final ingredient in ingredients) {
+          final foodDoc = await FirebaseFirestore.instance
+              .collection('medicineFoodInfo')
+              .doc(ingredient)
+              .get();
+
+          if (!foodDoc.exists) {
+            continue;
+          }
+
+          final foodData = foodDoc.data() ?? {};
+
+          final goodFoods = List<String>.from(
+            foodData['goodFoods'] ?? [],
+          );
+
+          final badFoods = List<String>.from(
+            foodData['badFoods'] ?? [],
+          );
+
+          final note = foodData['note']?.toString() ?? '';
+
+          for (final food in goodFoods) {
+            if (!allGoodFoods.contains(food)) {
+              allGoodFoods.add(food);
+            }
+          }
+
+          for (final food in badFoods) {
+            if (!allBadFoods.contains(food)) {
+              allBadFoods.add(food);
+            }
+          }
+
+          if (note.isNotEmpty) {
+            allNotes.add(note);
+          }
+        }
+
+        loadedFoods.add({
+          'medicineName': medicineName,
+          'ingredients': ingredients,
+          'goodFoods': allGoodFoods,
+          'badFoods': allBadFoods,
+          'note': allNotes.join('\n'),
+        });
       }
 
       setState(() {
         _foodInfos = loadedFoods;
+
         _loading = false;
       });
     } catch (e) {
@@ -1918,26 +2004,28 @@ class _FoodManagementPageState extends State<FoodManagementPage> {
                   itemBuilder: (_, index) {
                     final data = _foodInfos[index];
 
-                    final medicineName =
-                        data['medicineName'] ?? '-';
+                    final medicineName = data['medicineName'] ?? '-';
 
                     final goodFoods =
                         (data['goodFoods'] as List<dynamic>? ?? [])
                             .map((e) => e.toString())
                             .toList();
 
-                    final badFoods =
-                        (data['badFoods'] as List<dynamic>? ?? [])
-                            .map((e) => e.toString())
-                            .toList();
+                    final badFoods = (data['badFoods'] as List<dynamic>? ?? [])
+                        .map((e) => e.toString())
+                        .toList();
 
                     final note = data['note'] ?? '';
+
+                    final ingredients =
+                        (data['ingredients'] as List<dynamic>? ?? [])
+                            .map((e) => e.toString())
+                            .toList();
 
                     return ChickCard(
                       margin: const EdgeInsets.only(bottom: 16),
                       child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
@@ -1956,9 +2044,22 @@ class _FoodManagementPageState extends State<FoodManagementPage> {
                               ),
                             ],
                           ),
-
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: ingredients.isEmpty
+                                ? [const Text('등록된 성분 없음')]
+                                : ingredients
+                                    .map(
+                                      (ingredient) => _foodChip(
+                                        ingredient,
+                                        Colors.orange.shade100,
+                                      ),
+                                    )
+                                    .toList(),
+                          ),
                           const SizedBox(height: 18),
-
                           const Text(
                             '같이 먹으면 좋은 음식',
                             style: TextStyle(
@@ -1967,16 +2068,12 @@ class _FoodManagementPageState extends State<FoodManagementPage> {
                               color: Colors.green,
                             ),
                           ),
-
                           const SizedBox(height: 10),
-
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
                             children: goodFoods.isEmpty
-                                ? [
-                                    const Text('등록된 정보 없음')
-                                  ]
+                                ? [const Text('등록된 정보 없음')]
                                 : goodFoods
                                     .map(
                                       (food) => _foodChip(
@@ -1986,9 +2083,7 @@ class _FoodManagementPageState extends State<FoodManagementPage> {
                                     )
                                     .toList(),
                           ),
-
                           const SizedBox(height: 24),
-
                           const Text(
                             '같이 먹으면 안 좋은 음식 / 약',
                             style: TextStyle(
@@ -1997,16 +2092,12 @@ class _FoodManagementPageState extends State<FoodManagementPage> {
                               color: Colors.red,
                             ),
                           ),
-
                           const SizedBox(height: 10),
-
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
                             children: badFoods.isEmpty
-                                ? [
-                                    const Text('등록된 정보 없음')
-                                  ]
+                                ? [const Text('등록된 정보 없음')]
                                 : badFoods
                                     .map(
                                       (food) => _foodChip(
@@ -2016,10 +2107,8 @@ class _FoodManagementPageState extends State<FoodManagementPage> {
                                     )
                                     .toList(),
                           ),
-
                           if (note.toString().isNotEmpty) ...[
                             const SizedBox(height: 24),
-
                             const Text(
                               '주의사항',
                               style: TextStyle(
@@ -2028,9 +2117,7 @@ class _FoodManagementPageState extends State<FoodManagementPage> {
                                 color: chickBrown,
                               ),
                             ),
-
                             const SizedBox(height: 8),
-
                             Text(
                               note.toString(),
                               style: const TextStyle(
