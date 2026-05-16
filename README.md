@@ -8,6 +8,10 @@ Flutter 기반 모바일 애플리케이션과 Firebase 서버를 중심으로 �
 
 ---
 
+## 업데이트 내역
+
+[CHANGELOG.md](./CHANGELOG.md)
+
 ## 프로젝트 구성
 
 ### Capstone1
