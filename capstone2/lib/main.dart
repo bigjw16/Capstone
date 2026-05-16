@@ -851,11 +851,40 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
   DateTime? _repeatUntilDate;
   final List<bool> _weekdayRepeats = List<bool>.filled(7, false);
   String _status = '준비 완료';
+  String mealTime = 'breakfast';
+  String mealType = 'after_meal';
+  bool isFasting = false;
 
   String _formatTime(Duration d) {
     final hh = d.inHours.toString().padLeft(2, '0');
     final mm = (d.inMinutes % 60).toString().padLeft(2, '0');
     return '$hh:$mm';
+  }
+
+  String getMealTimeLabel(String value) {
+    switch (value) {
+      case 'breakfast':
+        return '아침';
+      case 'lunch':
+        return '점심';
+      case 'dinner':
+        return '저녁';
+      default:
+        return '';
+    }
+  }
+
+  String getMealTypeLabel(String value) {
+    switch (value) {
+      case 'before_meal':
+        return '식전';
+      case 'after_meal':
+        return '식후';
+      case 'empty_stomach':
+        return '공복';
+      default:
+        return '';
+    }
   }
 
   Future<void> saveMedicationSchedule() async {
@@ -900,6 +929,11 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
         );
       }
 
+      final mealLabel =
+          '${getMealTimeLabel(mealTime)} ${getMealTypeLabel(mealType)}';
+
+      final fasting = mealType == 'empty_stomach';
+
       await FirebaseFirestore.instance
           .collection('patients')
           .doc(PatientSession.patientId.value ?? 'default-patient')
@@ -907,8 +941,12 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
           .add({
         'medicineName': medicineName,
         'ingredients': ingredients,
-        'times': [_formatTime(_alarmTime)],
+        'time': _formatTime(_alarmTime),
         'alarmAt': Timestamp.fromDate(alarmAt),
+        'mealTime': mealTime,
+        'mealType': mealType,
+        'mealLabel': mealLabel,
+        'isFasting': fasting,
         'repeatDaily': _repeatDaily,
         'repeatWeekdays': selectedWeekdays,
         'repeatUntilAt': Timestamp.fromDate(
@@ -955,96 +993,263 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
       child: Column(
         children: [
           Expanded(
-            flex: 6,
+            flex: 5,
             child: ChickCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '알림 저장',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      color: chickBrown,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text('상태: $_status'),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _medicineCtrl,
-                    decoration: chickInput('약 이름'),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '선택된 시간: ${_formatTime(_alarmTime)}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  Expanded(
-                    child: TimePickerSpinner(
-                      duration: _alarmTime,
-                      onChanged: (duration) =>
-                          setState(() => _alarmTime = duration),
-                    ),
-                  ),
-                  Row(
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height * 0.75,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Checkbox(
-                        value: _repeatDaily,
-                        activeColor: chickOrange,
-                        onChanged: (v) =>
-                            setState(() => _repeatDaily = v ?? false),
+                      const Text(
+                        '알림 저장',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: chickBrown,
+                        ),
                       ),
-                      const Text('매일 반복'),
+                      const SizedBox(height: 8),
+                      Text('상태: $_status'),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _medicineCtrl,
+                        decoration: chickInput('약 이름'),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '선택된 시간: ${_formatTime(_alarmTime)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: chickOrange,
+                            foregroundColor: chickBrown,
+                          ),
+                          icon: const Icon(Icons.access_time),
+                          label: const Text('시간 설정'),
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (_) {
+                                Duration tempTime = _alarmTime;
+
+                                return Dialog(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                  ),
+                                  child: StatefulBuilder(
+                                    builder: (context, setModalState) {
+                                      return SizedBox(
+                                        width: 320,
+                                        height: 320,
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(16),
+                                          child: Column(
+                                            children: [
+                                              const Text(
+                                                '복약 시간 선택',
+                                                style: TextStyle(
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: chickBrown,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 16),
+                                              Expanded(
+                                                child: TimePickerSpinner(
+                                                  duration: tempTime,
+                                                  onChanged: (duration) {
+                                                    setModalState(() {
+                                                      tempTime = duration;
+                                                    });
+                                                  },
+                                                ),
+                                              ),
+                                              const SizedBox(height: 12),
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: OutlinedButton(
+                                                      onPressed: () {
+                                                        Navigator.pop(context);
+                                                      },
+                                                      child: const Text('취소'),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                  Expanded(
+                                                    child: FilledButton(
+                                                      style: FilledButton
+                                                          .styleFrom(
+                                                        backgroundColor:
+                                                            chickOrange,
+                                                        foregroundColor:
+                                                            chickBrown,
+                                                      ),
+                                                      onPressed: () {
+                                                        setState(() {
+                                                          _alarmTime = tempTime;
+                                                        });
+
+                                                        Navigator.pop(context);
+                                                      },
+                                                      child: const Text('확인'),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: mealTime,
+                        decoration: chickInput('복용 시간대'),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'breakfast',
+                            child: Text('아침'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'lunch',
+                            child: Text('점심'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'dinner',
+                            child: Text('저녁'),
+                          ),
+                        ],
+                        onChanged: (v) {
+                          if (v != null) {
+                            setState(() {
+                              mealTime = v;
+                            });
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: mealType,
+                        decoration: chickInput('식사 여부'),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'before_meal',
+                            child: Text('식전'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'after_meal',
+                            child: Text('식후'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'empty_stomach',
+                            child: Text('공복'),
+                          ),
+                        ],
+                        onChanged: (v) {
+                          if (v != null) {
+                            setState(() {
+                              mealType = v;
+                              isFasting = v == 'empty_stomach';
+                            });
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '복약 정보: '
+                        '${getMealTimeLabel(mealTime)} '
+                        '${getMealTypeLabel(mealType)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: chickBrown,
+                        ),
+                      ),
+                      if (isFasting)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 6),
+                          child: Text(
+                            '공복 복용 약입니다.',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: _repeatDaily,
+                            activeColor: chickOrange,
+                            onChanged: (v) =>
+                                setState(() => _repeatDaily = v ?? false),
+                          ),
+                          const Text('매일 반복'),
+                        ],
+                      ),
+                      Wrap(
+                        spacing: 2,
+                        children: List.generate(7, (index) {
+                          const labels = ['월', '화', '수', '목', '금', '토', '일'];
+                          return FilterChip(
+                            selectedColor: chickOrange,
+                            label: Text(labels[index]),
+                            selected: _weekdayRepeats[index],
+                            onSelected: (v) =>
+                                setState(() => _weekdayRepeats[index] = v),
+                          );
+                        }),
+                      ),
+                      if (_repeatDaily || _weekdayRepeats.contains(true))
+                        TextButton(
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              firstDate: DateTime.now(),
+                              lastDate: DateTime(2100, 12, 31),
+                              initialDate: _repeatUntilDate ?? DateTime.now(),
+                            );
+
+                            if (picked != null) {
+                              setState(() => _repeatUntilDate = picked);
+                            }
+                          },
+                          child: Text(
+                            _repeatUntilDate == null
+                                ? '반복 종료일 선택'
+                                : '반복 종료일: ${_repeatUntilDate!.year}-${_repeatUntilDate!.month.toString().padLeft(2, '0')}-${_repeatUntilDate!.day.toString().padLeft(2, '0')}',
+                          ),
+                        ),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: chickOrange,
+                          foregroundColor: chickBrown,
+                        ),
+                        onPressed: saveMedicationSchedule,
+                        child: const Text('알림 등록 저장'),
+                      ),
                     ],
                   ),
-                  Wrap(
-                    spacing: 2,
-                    children: List.generate(7, (index) {
-                      const labels = ['월', '화', '수', '목', '금', '토', '일'];
-                      return FilterChip(
-                        selectedColor: chickOrange,
-                        label: Text(labels[index]),
-                        selected: _weekdayRepeats[index],
-                        onSelected: (v) =>
-                            setState(() => _weekdayRepeats[index] = v),
-                      );
-                    }),
-                  ),
-                  if (_repeatDaily || _weekdayRepeats.contains(true))
-                    TextButton(
-                      onPressed: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          firstDate: DateTime.now(),
-                          lastDate: DateTime(2100, 12, 31),
-                          initialDate: _repeatUntilDate ?? DateTime.now(),
-                        );
-
-                        if (picked != null) {
-                          setState(() => _repeatUntilDate = picked);
-                        }
-                      },
-                      child: Text(
-                        _repeatUntilDate == null
-                            ? '반복 종료일 선택'
-                            : '반복 종료일: ${_repeatUntilDate!.year}-${_repeatUntilDate!.month.toString().padLeft(2, '0')}-${_repeatUntilDate!.day.toString().padLeft(2, '0')}',
-                      ),
-                    ),
-                  FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: chickOrange,
-                      foregroundColor: chickBrown,
-                    ),
-                    onPressed: saveMedicationSchedule,
-                    child: const Text('알림 등록 저장'),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
           Expanded(
-            flex: 4,
+            flex: 5,
             child: ChickCard(
               margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               child: Column(
@@ -1141,6 +1346,17 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text('시간: $times'),
+                                    Text(
+                                      '복용: ${data['mealLabel'] ?? '-'}',
+                                    ),
+                                    if (data['isFasting'] == true)
+                                      const Text(
+                                        '공복 복용',
+                                        style: TextStyle(
+                                          color: Colors.red,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                                     Text('반복: $repeatText'),
                                   ],
                                 ),
@@ -1861,6 +2077,7 @@ class _FoodManagementPageState extends State<FoodManagementPage> {
     try {
       final patientId = PatientSession.patientId.value ?? 'default-patient';
 
+      // 1. 환자 복용 약 조회
       final medSnapshot = await FirebaseFirestore.instance
           .collection('patients')
           .doc(patientId)
@@ -1868,94 +2085,92 @@ class _FoodManagementPageState extends State<FoodManagementPage> {
           .get();
 
       final medicineNames = medSnapshot.docs
-          .map(
-            (e) => e.data()['medicineName']?.toString() ?? '',
-          )
+          .map((e) => e.data()['medicineName']?.toString() ?? '')
           .where((e) => e.isNotEmpty)
           .toSet()
           .toList();
 
       List<Map<String, dynamic>> loadedFoods = [];
 
+      // 2. 약 → 성분 → foodInteractions 매핑
       for (final medicineName in medicineNames) {
         final medicineDoc = await FirebaseFirestore.instance
             .collection('medicines')
             .doc(medicineName)
             .get();
 
-        if (!medicineDoc.exists) {
-          continue;
-        }
+        if (!medicineDoc.exists) continue;
 
         final medicineData = medicineDoc.data() ?? {};
+        final ingredients =
+            List<String>.from(medicineData['ingredients'] ?? []);
 
-        final ingredients = List<String>.from(
-          medicineData['ingredients'] ?? [],
-        );
-
-        final List<String> allGoodFoods = [];
-        final List<String> allBadFoods = [];
-        final List<String> allNotes = [];
+        List<Map<String, dynamic>> allFoods = [];
 
         for (final ingredient in ingredients) {
           final foodDoc = await FirebaseFirestore.instance
-              .collection('medicineFoodInfo')
+              .collection('foodInteractions')
               .doc(ingredient)
               .get();
 
-          if (!foodDoc.exists) {
-            continue;
-          }
+          if (!foodDoc.exists) continue;
 
           final foodData = foodDoc.data() ?? {};
 
-          final goodFoods = List<String>.from(
-            foodData['goodFoods'] ?? [],
+          final foods = List<Map<String, dynamic>>.from(
+            foodData['foods'] ?? [],
           );
 
-          final badFoods = List<String>.from(
-            foodData['badFoods'] ?? [],
-          );
-
-          final note = foodData['note']?.toString() ?? '';
-
-          for (final food in goodFoods) {
-            if (!allGoodFoods.contains(food)) {
-              allGoodFoods.add(food);
-            }
-          }
-
-          for (final food in badFoods) {
-            if (!allBadFoods.contains(food)) {
-              allBadFoods.add(food);
-            }
-          }
-
-          if (note.isNotEmpty) {
-            allNotes.add(note);
+          for (final food in foods) {
+            allFoods.add({
+              "food": food['food'] ?? '',
+              "severity": food['severity'] ?? 'low',
+              "reason": food['reason'] ?? '',
+              "ingredient": ingredient,
+            });
           }
         }
 
         loadedFoods.add({
-          'medicineName': medicineName,
-          'ingredients': ingredients,
-          'goodFoods': allGoodFoods,
-          'badFoods': allBadFoods,
-          'note': allNotes.join('\n'),
+          "medicineName": medicineName,
+          "ingredients": ingredients,
+          "foods": allFoods,
         });
       }
 
       setState(() {
         _foodInfos = loadedFoods;
-
         _loading = false;
       });
     } catch (e) {
-      debugPrint('식품 정보 로딩 실패: $e');
-
+      debugPrint("식품 정보 로딩 실패: $e");
       setState(() {
         _loading = false;
       });
+    }
+  }
+
+  // 🔥 severity 색상
+  Color _severityColor(String severity) {
+    switch (severity) {
+      case 'high':
+        return Colors.red;
+      case 'medium':
+        return Colors.orange;
+      default:
+        return Colors.green;
+    }
+  }
+
+  // 🔥 severity 라벨
+  String _severityLabel(String severity) {
+    switch (severity) {
+      case 'high':
+        return '🔴 매우 위험';
+      case 'medium':
+        return '🟡 주의';
+      default:
+        return '🟢 안전';
     }
   }
 
@@ -1966,7 +2181,7 @@ class _FoodManagementPageState extends State<FoodManagementPage> {
         vertical: 8,
       ),
       decoration: BoxDecoration(
-        color: color,
+        color: color.withOpacity(0.3),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Text(
@@ -1984,9 +2199,7 @@ class _FoodManagementPageState extends State<FoodManagementPage> {
     return ChickScaffold(
       title: '식품관리',
       child: _loading
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
+          ? const Center(child: CircularProgressIndicator())
           : _foodInfos.isEmpty
               ? const Center(
                   child: Text(
@@ -2006,27 +2219,21 @@ class _FoodManagementPageState extends State<FoodManagementPage> {
 
                     final medicineName = data['medicineName'] ?? '-';
 
-                    final goodFoods =
-                        (data['goodFoods'] as List<dynamic>? ?? [])
-                            .map((e) => e.toString())
-                            .toList();
-
-                    final badFoods = (data['badFoods'] as List<dynamic>? ?? [])
-                        .map((e) => e.toString())
-                        .toList();
-
-                    final note = data['note'] ?? '';
-
                     final ingredients =
                         (data['ingredients'] as List<dynamic>? ?? [])
                             .map((e) => e.toString())
                             .toList();
+
+                    final foods = (data['foods'] as List<dynamic>? ?? [])
+                        .map((e) => Map<String, dynamic>.from(e))
+                        .toList();
 
                     return ChickCard(
                       margin: const EdgeInsets.only(bottom: 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // 약 이름
                           Row(
                             children: [
                               const Icon(
@@ -2044,7 +2251,10 @@ class _FoodManagementPageState extends State<FoodManagementPage> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 10),
+
+                          const SizedBox(height: 12),
+
+                          // 성분
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
@@ -2054,77 +2264,75 @@ class _FoodManagementPageState extends State<FoodManagementPage> {
                                     .map(
                                       (ingredient) => _foodChip(
                                         ingredient,
-                                        Colors.orange.shade100,
+                                        Colors.orange,
                                       ),
                                     )
                                     .toList(),
                           ),
-                          const SizedBox(height: 18),
+
+                          const SizedBox(height: 20),
+
                           const Text(
-                            '같이 먹으면 좋은 음식',
+                            '음식 상호작용 위험도',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: Colors.green,
+                              color: chickBrown,
                             ),
                           ),
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: goodFoods.isEmpty
+
+                          const SizedBox(height: 12),
+
+                          Column(
+                            children: foods.isEmpty
                                 ? [const Text('등록된 정보 없음')]
-                                : goodFoods
-                                    .map(
-                                      (food) => _foodChip(
-                                        food,
-                                        Colors.green.shade100,
+                                : foods.map((food) {
+                                    final name = food['food'] ?? '-';
+                                    final severity = food['severity'] ?? 'low';
+                                    final reason = food['reason'] ?? '';
+                                    final ingredient = food['ingredient'] ?? '';
+
+                                    return Container(
+                                      margin: const EdgeInsets.only(bottom: 12),
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: _severityColor(severity)
+                                            .withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: _severityColor(severity),
+                                        ),
                                       ),
-                                    )
-                                    .toList(),
-                          ),
-                          const SizedBox(height: 24),
-                          const Text(
-                            '같이 먹으면 안 좋은 음식 / 약',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.red,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: badFoods.isEmpty
-                                ? [const Text('등록된 정보 없음')]
-                                : badFoods
-                                    .map(
-                                      (food) => _foodChip(
-                                        food,
-                                        Colors.red.shade100,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          _foodChip(
+                                            "${_severityLabel(severity)} $name",
+                                            _severityColor(severity),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            "성분: $ingredient",
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                          if (reason.isNotEmpty) ...[
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              reason,
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
                                       ),
-                                    )
-                                    .toList(),
+                                    );
+                                  }).toList(),
                           ),
-                          if (note.toString().isNotEmpty) ...[
-                            const SizedBox(height: 24),
-                            const Text(
-                              '주의사항',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: chickBrown,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              note.toString(),
-                              style: const TextStyle(
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
                         ],
                       ),
                     );
