@@ -14,7 +14,6 @@ class FoodManagementPage extends StatefulWidget {
 }
 
 class FoodCache {
-  static final Map<String, dynamic> medicineCache = {};
   static final Map<String, List<Map<String, dynamic>>> foodCache = {};
 }
 
@@ -31,24 +30,10 @@ class _FoodManagementPageState extends State<FoodManagementPage> {
       await _loadFoodInfo();
     });
   }
-  
-
-  Future<Map<String, dynamic>> getMedicineBatch(List<String> names) async {
-  final firestore = FirebaseFirestore.instance;
-
-  final futures = names.map((name) =>
-      firestore.collection('medicines').doc(name).get());
-
-  final results = await Future.wait(futures);
-
-  return {
-    for (var doc in results)
-      if (doc.exists) doc.id: doc.data()
-  };
-}
 
   Future<void> _prefetchFoodData() async {
-  final patientId = PatientSession.patientId.value ?? 'default-patient';
+  final patientId =
+      PatientSession.patientId.value ?? 'default-patient';
 
   final medSnapshot = await FirebaseFirestore.instance
       .collection('patients')
@@ -56,42 +41,36 @@ class _FoodManagementPageState extends State<FoodManagementPage> {
       .collection('medSchedules')
       .get();
 
-  final medicineNames = medSnapshot.docs
-      .map((e) => e.data()['medicineName']?.toString() ?? '')
-      .where((e) => e.isNotEmpty)
-      .toSet()
-      .toList();
-
-  // 🔥 medicines batch preload
-  final medicines = await getMedicineBatch(medicineNames);
-
-  FoodCache.medicineCache.addAll(medicines);
-
-  // 🔥 ingredient collect
   final allIngredients = <String>{};
 
-  for (final data in medicines.values) {
-    final ingredients = List<String>.from(data?['ingredients'] ?? []);
+  for (final doc in medSnapshot.docs) {
+    final ingredients = List<String>.from(
+      doc.data()['ingredients'] ?? [],
+    );
+
     allIngredients.addAll(ingredients);
   }
 
-  // 🔥 foodInfo batch preload
-  final foodFutures = allIngredients.map((ing) async {
+  final foodFutures = allIngredients.map((ingredient) async {
     final doc = await FirebaseFirestore.instance
         .collection('medicineFoodInfo')
-        .doc(ing)
+        .doc(ingredient)
         .get();
 
     if (!doc.exists) return null;
 
-    return MapEntry(ing, doc.data());
+    return MapEntry(
+      ingredient,
+      doc.data(),
+    );
   });
 
   final foodResults = await Future.wait(foodFutures);
 
   for (final item in foodResults) {
     if (item != null) {
-      FoodCache.foodCache[item.key] = List<Map<String, dynamic>>.from(
+      FoodCache.foodCache[item.key] =
+          List<Map<String, dynamic>>.from(
         item.value?['foodRisks'] ?? [],
       );
     }
@@ -100,7 +79,8 @@ class _FoodManagementPageState extends State<FoodManagementPage> {
 
   Future<void> _loadFoodInfo() async {
   try {
-    final patientId = PatientSession.patientId.value ?? 'default-patient';
+    final patientId =
+        PatientSession.patientId.value ?? 'default-patient';
 
     final medSnapshot = await FirebaseFirestore.instance
         .collection('patients')
@@ -108,40 +88,39 @@ class _FoodManagementPageState extends State<FoodManagementPage> {
         .collection('medSchedules')
         .get();
 
-    final medicineNames = medSnapshot.docs
-        .map((e) => e.data()['medicineName']?.toString() ?? '')
-        .where((e) => e.isNotEmpty)
-        .toSet()
-        .toList();
-
     final List<Map<String, dynamic>> loadedFoods = [];
 
-    for (final name in medicineNames) {
-      final medicine = FoodCache.medicineCache[name];
-      if (medicine == null || medicine['ingredients'] == null) continue;
+    for (final doc in medSnapshot.docs) {
+      final data = doc.data();
+
+      final medicineName =
+          data['medicineName']?.toString() ?? '';
 
       final ingredients =
-          List<String>.from(medicine['ingredients'] ?? []);
+        (data['ingredients'] as List<dynamic>? ?? [])
+            .map((e) => e.toString())
+            .toList();
 
       final foods = <Map<String, dynamic>>[];
 
-      for (final ing in ingredients) {
-        final cachedRisks = FoodCache.foodCache[ing] ?? [];
+      for (final ingredient in ingredients) {
+        final cachedRisks =
+            FoodCache.foodCache[ingredient] ?? [];
 
-        for (final r in cachedRisks) {
+        for (final risk in cachedRisks) {
           foods.add({
-            "food": r['food'],
-            "severity": r['severity'],
-            "reason": r['reason'],
-            "ingredient": ing,
+            'food': risk['food'],
+            'severity': risk['severity'],
+            'reason': risk['reason'],
+            'ingredient': ingredient,
           });
         }
       }
 
       loadedFoods.add({
-        "medicineName": name,
-        "ingredients": ingredients,
-        "foods": foods,
+        'medicineName': medicineName,
+        'ingredients': ingredients,
+        'foods': foods,
       });
     }
 
@@ -150,8 +129,11 @@ class _FoodManagementPageState extends State<FoodManagementPage> {
       _loading = false;
     });
   } catch (e) {
-    debugPrint("로딩 실패: $e");
-    setState(() => _loading = false);
+    debugPrint('로딩 실패: $e');
+
+    setState(() {
+      _loading = false;
+    });
   }
 }
 
