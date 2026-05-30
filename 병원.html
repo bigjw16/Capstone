@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>환자/약 정보 등록</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 24px;
+      max-width: 900px;
+    }
+
+    .top-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .tab-btn {
+      width: auto;
+      padding: 10px 18px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: #f5f5f5;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .tab-btn.active {
+      background: #222;
+      color: white;
+    }
+
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      margin-top: 8px;
+      font-weight: 600;
+    }
+
+    input, textarea, button {
+      margin-top: 6px;
+      padding: 8px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    ul {
+      padding-left: 18px;
+    }
+
+    .hint {
+      color: #555;
+      font-size: 0.9rem;
+    }
+
+    .ok {
+      color: #0f7a0f;
+    }
+
+    .err {
+      color: #b00020;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    #medicinePage {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="top-tabs">
+    <button id="patientPageBtn" class="tab-btn active">환자 정보 등록</button>
+    <button id="editPatientPageBtn" class="tab-btn">환자 정보 수정</button>
+    <button id="medicinePageBtn" class="tab-btn">약 정보 등록</button>
+    <button id="foodPageBtn" class="tab-btn">음식 정보 등록</button>
+  </div>
+
+  <section id="patientPage">
+    <h1>환자/병원/약국 정보 입력 + 복약시간 조회</h1>
+    <p class="hint">Firebase 설정값을 채운 뒤 사용하세요.</p>
+    <p id="authStatus" class="hint">인증 상태 확인 중...</p>
+
+    <div class="card">
+      <h2>1) 병원 정보 입력</h2>
+
+      <label>병원명</label>
+      <input id="hospitalName" placeholder="예: 서울메디컬센터" />
+
+      <label>주소</label>
+      <input id="hospitalAddress" placeholder="예: 서울시 강남구 ..." />
+
+      <label>연락처</label>
+      <input id="hospitalPhone" placeholder="예: 02-1234-5678" />
+
+      <button id="saveHospitalBtn">병원 정보 저장</button>
+      <p id="hospitalResult" class="hint"></p>
+    </div>
+
+    <div class="card">
+      <h2>2) 약국 정보 입력</h2>
+
+      <label>약국명</label>
+      <input id="pharmacyName" placeholder="예: 건강약국" />
+
+      <label>약국 주소</label>
+      <input id="pharmacyAddress" placeholder="예: 서울시 강남구 ..." />
+
+      <label>약국 연락처</label>
+      <input id="pharmacyPhone" placeholder="예: 02-9876-5432" />
+
+      <button id="savePharmacyBtn">약국 정보 저장</button>
+
+      <p id="pharmacyResult" class="hint"></p>
+    </div>
+
+    <div class="card">
+      <h2>2) 환자 정보 입력</h2>
+
+      <label>환자명</label>
+      <input id="patientName" placeholder="예: 홍길동" />
+
+      <label>생년월일 (YYYY-MM-DD)</label>
+      <input id="patientBirthDate" placeholder="예: 1950-01-01" />
+
+      <label>병원 ID</label>
+      <input id="patientHospitalId" placeholder="위에서 저장한 hospitalId" />
+
+      <label>보호자 이름</label>
+      <input id="guardianName" placeholder="예: 홍보호" />
+
+      <label>보호자 연락처</label>
+      <input id="guardianPhone" placeholder="예: 010-1234-5678" />
+
+      <button id="savePatientBtn">환자 등록</button>
+      <p id="patientResult" class="hint"></p>
+    </div>
+
+    <div class="card">
+      <h2>3) 환자 복약시간 조회</h2>
+
+      <label>환자 ID</label>
+      <input id="queryPatientId" placeholder="patientId 입력" />
+
+      <button id="loadMedBtn">복약시간 불러오기</button>
+      <ul id="medList"></ul>
+      <div id="foodInfoArea"></div>
+    </div>
+
+    <div class="card">
+      <h2>5) ESP8266 복약 기록 조회</h2>
+
+      <label>환자 ID</label>
+      <input id="logPatientId" placeholder="예: patient001" />
+
+      <button id="loadLogBtn">
+        복약 기록 불러오기
+      </button>
+
+      <ul id="logList"></ul>
+    </div>
+
+    <div class="card" id="scheduleSection">
+      <h2>4) 복약 알림 일정 등록</h2>
+
+      <label>환자 ID (환자명)</label>
+      <input id="schedulePatientId" placeholder="예: 홍길동" />
+
+      <label>약 이름</label>
+      <input id="scheduleMedicineName" placeholder="예: 혈압약" />
+
+      <label>성분 (ingredients, 쉼표로 구분)</label>
+      <input id="scheduleIngredients" placeholder="예: 아세트아미노펜, 카페인" />
+
+      <label>시작 날짜</label>
+      <input id="scheduleDate" type="date" />
+
+      <label>알림 시간</label>
+      <input id="scheduleTime" type="time" />
+
+      <label>복용 시간대</label>
+      <select id="mealTime">
+        <option value="breakfast">아침</option>
+        <option value="lunch">점심</option>
+        <option value="dinner">저녁</option>
+      </select>
+
+      <label>식사 여부</label>
+      <select id="mealType">
+        <option value="before_meal">식전</option>
+        <option value="after_meal">식후</option>
+        <option value="empty_stomach">공복</option>
+      </select>
+
+      <label>복약 표시 이름</label>
+      <input
+        id="mealLabel"
+        placeholder="예: 아침 식후"
+      />
+
+      <label>
+        <input id="isFasting" type="checkbox" />
+        공복 복용 여부
+      </label>
+
+      <label>
+        <input id="repeatDaily" type="checkbox" />
+        매일 반복
+      </label>
+
+      <label>요일 반복 (일~토)</label>
+      <div id="weekdayRow" style="display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:6px;">
+        <label><input type="checkbox" class="weekdayCheck" value="0" />일</label>
+        <label><input type="checkbox" class="weekdayCheck" value="1" />월</label>
+        <label><input type="checkbox" class="weekdayCheck" value="2" />화</label>
+        <label><input type="checkbox" class="weekdayCheck" value="3" />수</label>
+        <label><input type="checkbox" class="weekdayCheck" value="4" />목</label>
+        <label><input type="checkbox" class="weekdayCheck" value="5" />금</label>
+        <label><input type="checkbox" class="weekdayCheck" value="6" />토</label>
+      </div>
+
+      <label>반복 종료일(선택)</label>
+      <input id="repeatUntilDate" type="date" />
+
+      <div class="button-row">
+        <button id="setNowBtn" type="button">현재 시각 채우기</button>
+        <button id="saveScheduleBtn">알림 스케줄 저장</button>
+      </div>
+
+      <p id="scheduleResult" class="hint"></p>
+    </div>
+  </section>
+
+<section id="editPatientPage" style="display: none;">
+  <h1>환자 정보 수정</h1>
+
+  <div class="card">
+    <h2>Firebase 환자 정보 불러오기</h2>
+
+    <label>환자 ID / 환자명</label>
+    <input id="editPatientId" placeholder="예: 홍길동" />
+
+    <button id="loadPatientInfoBtn">환자 정보 불러오기</button>
+    <p id="editPatientLoadResult" class="hint"></p>
+  </div>
+
+  <div class="card">
+    <h2>환자 정보 수정</h2>
+
+    <label>환자명</label>
+    <input id="editPatientName" />
+
+    <label>생년월일 (YYYY-MM-DD)</label>
+    <input id="editPatientBirthDate" />
+
+    <label>병원 ID</label>
+    <input id="editPatientHospitalId" />
+
+    <label>보호자 이름</label>
+    <input id="editGuardianName" />
+
+    <label>보호자 연락처</label>
+    <input id="editGuardianPhone" />
+
+    <label>약국명</label>
+    <input id="editPharmacyName" />
+
+    <label>약국 주소</label>
+    <input id="editPharmacyAddress" />
+
+    <label>약국 연락처</label>
+    <input id="editPharmacyPhone" />
+
+    <button id="updatePatientBtn">수정 저장</button>
+    <p id="editPatientSaveResult" class="hint"></p>
+  </div>
+</section>
+
+<section id="medicinePage">
+  <h1>약 정보 등록</h1>
+
+  <div class="card">
+    <h2>약 이름 및 성분 등록</h2>
+
+    <label>약 이름</label>
+    <input id="medicineName" placeholder="예: 타이레놀" />
+
+    <label>성분명</label>
+    <input id="medicineIngredient" placeholder="예: 아세트아미노펜" />
+
+    <button id="saveMedicineBtn">약 정보 저장</button>
+
+    <p id="medicineResult" class="hint"></p>
+  </div>
+</section>
+
+<section id="foodPage" style="display: none;">
+  <h1>성분별 음식 정보 등록</h1>
+
+  <div class="card">
+    <h2>음식 위험도 등록</h2>
+
+    <label>성분명</label>
+    <input
+      id="foodIngredient"
+      placeholder="예: 아세트아미노펜"
+    />
+
+    <div id="foodRiskContainer">
+
+      <div class="food-risk-item card">
+        <label>음식 이름</label>
+        <input class="riskFoodName" placeholder="예: 자몽" />
+
+        <label>위험도</label>
+        <select class="riskSeverity">
+          <option value="safe">🟢 안전</option>
+          <option value="caution">🟡 주의</option>
+          <option value="high">🔴 매우 위험</option>
+        </select>
+
+        <label>이유</label>
+        <textarea
+          class="riskReason"
+          rows="2"
+          placeholder="예: 혈압약 대사 방해"
+        ></textarea>
+       </div>
+
+    </div>
+
+    <div class="button-row">
+      <button id="addFoodRiskBtn" type="button">
+        음식 추가
+      </button>
+
+      <button id="saveFoodInfoBtn">
+        음식 정보 저장
+      </button>
+
+      <button id="loadFoodInfoBtn">
+        기존 정보 불러오기
+      </button>
+    </div>
+
+    <p id="foodInfoResult" class="hint"></p>
+      </div>
+</section>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js';
+
+    import {
+      getAuth,
+      signInAnonymously,
+      onAuthStateChanged,
+    } from 'https://www.gstatic.com/firebasejs/11.7.1/firebase-auth.js';
+
+    import {
+      getFirestore,
+      addDoc,
+      setDoc,
+      doc,
+      collection,
+      serverTimestamp,
+      query,
+      orderBy,
+      getDocs,
+      getDoc,
+      updateDoc,
+      Timestamp,
+    } from 'https://www.gstatic.com/firebasejs/11.7.1/firebase-firestore.js';
+  
+    import {
+      getDatabase,
+      ref,
+      get,
+    } from 'https://www.gstatic.com/firebasejs/11.7.1/firebase-database.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB3n9cTNNBa2hFTVRddtMU9pG-Tha7n_u0",
+      authDomain: "test2-814d1.firebaseapp.com",
+      projectId: "test2-814d1",
+      storageBucket: "test2-814d1.firebasestorage.app",
+      messagingSenderId: "510762522149",
+      appId: "1:510762522149:web:12c8b9d20e7c2d1c7c51cc",
+      databaseURL: "https://test2-814d1-default-rtdb.asia-southeast1.firebasedatabase.app"
+    };
+
+    const patientPageBtn = document.getElementById('patientPageBtn');
+    const medicinePageBtn = document.getElementById('medicinePageBtn');
+    const patientPage = document.getElementById('patientPage');
+    const medicinePage = document.getElementById('medicinePage');
+    const editPatientPageBtn = document.getElementById('editPatientPageBtn');
+    const editPatientPage = document.getElementById('editPatientPage');
+    const foodInfoArea = document.getElementById('foodInfoArea');
+    const mealTime = document.getElementById('mealTime');
+    const mealType = document.getElementById('mealType');
+    const mealLabel = document.getElementById('mealLabel');
+    const isFasting = document.getElementById('isFasting');
+    const scheduleIngredients = document.getElementById('scheduleIngredients');
+
+    const foodPageBtn = document.getElementById('foodPageBtn');
+    const foodPage = document.getElementById('foodPage');
+
+    const loadFoodInfoBtn =
+      document.getElementById('loadFoodInfoBtn');
+
+    const medicineName =
+      document.getElementById('medicineName');
+
+    const medicineIngredient =
+      document.getElementById('medicineIngredient');
+
+    const saveMedicineBtn =
+      document.getElementById('saveMedicineBtn');
+
+    const medicineResult =
+      document.getElementById('medicineResult');
+
+    const foodIngredient = document.getElementById('foodIngredient');
+    const addFoodRiskBtn = document.getElementById('addFoodRiskBtn');
+    const foodRiskContainer = document.getElementById('foodRiskContainer');
+    const foodNote = document.getElementById('foodNote');
+    const saveFoodInfoBtn = document.getElementById('saveFoodInfoBtn');
+    const foodInfoResult = document.getElementById('foodInfoResult');
+
+   patientPageBtn.addEventListener('click', () => {
+     patientPage.style.display = 'block';
+     editPatientPage.style.display = 'none';
+     medicinePage.style.display = 'none';
+     foodPage.style.display = 'none';
+
+     patientPageBtn.classList.add('active');
+     editPatientPageBtn.classList.remove('active');
+     medicinePageBtn.classList.remove('active');
+     foodPageBtn.classList.remove('active');
+});
+
+  editPatientPageBtn.addEventListener('click', () => {
+    patientPage.style.display = 'none';
+    editPatientPage.style.display = 'block';
+    medicinePage.style.display = 'none';
+    foodPage.style.display = 'none';
+
+    editPatientPageBtn.classList.add('active');
+    patientPageBtn.classList.remove('active');
+    medicinePageBtn.classList.remove('active');
+    foodPageBtn.classList.remove('active');
+});
+
+  medicinePageBtn.addEventListener('click', () => {
+    patientPage.style.display = 'none';
+    editPatientPage.style.display = 'none';
+    medicinePage.style.display = 'block';
+    foodPage.style.display = 'none';
+
+    medicinePageBtn.classList.add('active');
+    patientPageBtn.classList.remove('active');
+    editPatientPageBtn.classList.remove('active');
+    foodPageBtn.classList.remove('active');
+});
+
+  foodPageBtn.addEventListener('click', () => {
+    patientPage.style.display = 'none';
+    editPatientPage.style.display = 'none';
+    medicinePage.style.display = 'none';
+    foodPage.style.display = 'block';
+
+    foodPageBtn.classList.add('active');
+    patientPageBtn.classList.remove('active');
+    editPatientPageBtn.classList.remove('active');
+    medicinePageBtn.classList.remove('active');
+});
+
+    const authStatus = document.getElementById('authStatus');
+
+    const configHasPlaceholder = (value) =>
+      !value || String(value).startsWith('YOUR_');
+
+    const configInvalid =
+      configHasPlaceholder(firebaseConfig.apiKey) ||
+      configHasPlaceholder(firebaseConfig.projectId) ||
+      configHasPlaceholder(firebaseConfig.appId);
+
+    if (configInvalid) {
+      authStatus.className = 'hint err';
+      authStatus.textContent =
+        'Firebase 설정값이 비어 있습니다. index.html의 firebaseConfig를 실제 값으로 교체하세요.';
+    }
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const rtdb = getDatabase(app);
+
+    const hospitalName = document.getElementById('hospitalName');
+    const hospitalAddress = document.getElementById('hospitalAddress');
+    const hospitalPhone = document.getElementById('hospitalPhone');
+    const saveHospitalBtn = document.getElementById('saveHospitalBtn');
+    const hospitalResult = document.getElementById('hospitalResult');
+
+    const patientName = document.getElementById('patientName');
+    const patientBirthDate = document.getElementById('patientBirthDate');
+    const patientHospitalId = document.getElementById('patientHospitalId');
+    const guardianName = document.getElementById('guardianName');
+    const guardianPhone = document.getElementById('guardianPhone');
+
+    const pharmacyName = document.getElementById('pharmacyName');
+    const pharmacyAddress = document.getElementById('pharmacyAddress');
+    const pharmacyPhone = document.getElementById('pharmacyPhone');
+    const savePharmacyBtn = document.getElementById('savePharmacyBtn');
+    const pharmacyResult = document.getElementById('pharmacyResult');
+
+    const savePatientBtn = document.getElementById('savePatientBtn');
+    const patientResult = document.getElementById('patientResult');
+
+    const queryPatientId = document.getElementById('queryPatientId');
+    const loadMedBtn = document.getElementById('loadMedBtn');
+    const medList = document.getElementById('medList');
+
+    const schedulePatientId = document.getElementById('schedulePatientId');
+    const scheduleMedicineName = document.getElementById('scheduleMedicineName');
+    const scheduleDate = document.getElementById('scheduleDate');
+    const scheduleTime = document.getElementById('scheduleTime');
+    const repeatDaily = document.getElementById('repeatDaily');
+    const repeatUntilDate = document.getElementById('repeatUntilDate');
+    const setNowBtn = document.getElementById('setNowBtn');
+    const saveScheduleBtn = document.getElementById('saveScheduleBtn');
+    const scheduleResult = document.getElementById('scheduleResult');
+    const weekdayChecks = Array.from(document.querySelectorAll('.weekdayCheck'));
+
+    const logPatientId = document.getElementById('logPatientId');
+    const loadLogBtn = document.getElementById('loadLogBtn');
+    const logList = document.getElementById('logList');
+
+    const editPatientId = document.getElementById('editPatientId');
+    const loadPatientInfoBtn = document.getElementById('loadPatientInfoBtn');
+    const editPatientLoadResult = document.getElementById('editPatientLoadResult');
+
+    const editPatientName = document.getElementById('editPatientName');
+    const editPatientBirthDate = document.getElementById('editPatientBirthDate');
+    const editPatientHospitalId = document.getElementById('editPatientHospitalId');
+    const editGuardianName = document.getElementById('editGuardianName');
+    const editGuardianPhone = document.getElementById('editGuardianPhone');
+
+    const editPharmacyName = document.getElementById('editPharmacyName');
+    const editPharmacyAddress = document.getElementById('editPharmacyAddress');
+    const editPharmacyPhone = document.getElementById('editPharmacyPhone');
+
+    const updatePatientBtn = document.getElementById('updatePatientBtn');
+    const editPatientSaveResult = document.getElementById('editPatientSaveResult');
+
+    function setButtonsEnabled(enabled) {
+      saveHospitalBtn.disabled = !enabled;
+      savePharmacyBtn.disabled = !enabled;
+      savePatientBtn.disabled = !enabled;
+      loadMedBtn.disabled = !enabled;
+      saveScheduleBtn.disabled = !enabled;
+      setNowBtn.disabled = !enabled;
+      loadPatientInfoBtn.disabled = !enabled;
+      updatePatientBtn.disabled = !enabled;
+      saveFoodInfoBtn.disabled = !enabled;
+      saveMedicineBtn.disabled = !enabled;
+    }
+
+    if (configInvalid) {
+      setButtonsEnabled(false);
+    }
+
+    function fillScheduleWithNow() {
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mi = String(now.getMinutes()).padStart(2, '0');
+
+      scheduleDate.value = `${yyyy}-${mm}-${dd}`;
+      scheduleTime.value = `${hh}:${mi}`;
+    }
+
+    setNowBtn.addEventListener('click', fillScheduleWithNow);
+    fillScheduleWithNow();
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        authStatus.className = 'hint ok';
+        authStatus.textContent = `인증 완료 (uid: ${user.uid})`;
+      } else if (!configInvalid) {
+        authStatus.className = 'hint err';
+        authStatus.textContent = '인증되지 않음';
+      }
+    });
+
+    async function ensureSignedIn() {
+      if (configInvalid) {
+        throw new Error('firebaseConfig가 유효하지 않습니다.');
+      }
+
+      if (auth.currentUser) return;
+
+      await signInAnonymously(auth);
+    }
+
+    function setResult(el, message, isError = false) {
+      el.className = isError ? 'hint err' : 'hint ok';
+      el.textContent = message;
+    }
+
+    saveHospitalBtn.addEventListener('click', async () => {
+      try {
+        await ensureSignedIn();
+
+        const docRef = await addDoc(collection(db, 'hospitals'), {
+          name: hospitalName.value,
+          address: hospitalAddress.value,
+          phone: hospitalPhone.value,
+          createdAt: serverTimestamp(),
+        });
+
+        setResult(hospitalResult, `저장 완료 hospitalId: ${docRef.id}`);
+      } catch (error) {
+        setResult(hospitalResult, `저장 실패: ${error.message}`, true);
+      }
+    });
+
+    savePharmacyBtn.addEventListener('click', async () => {
+      try {
+        await ensureSignedIn();
+
+        const docRef = await addDoc(collection(db, 'pharmacies'), {
+          name: pharmacyName.value,
+          address: pharmacyAddress.value,
+          phone: pharmacyPhone.value,
+          createdAt: serverTimestamp(),
+        });
+
+        setResult(
+          pharmacyResult,
+          `저장 완료 pharmacyId: ${docRef.id}`
+        );
+      } catch (error) {
+        setResult(
+          pharmacyResult,
+          `저장 실패: ${error.message}`,
+          true
+        );
+      }
+    });
+
+    savePatientBtn.addEventListener('click', async () => {
+      try {
+        await ensureSignedIn();
+
+        const patientKey = patientName.value.trim();
+
+        if (!patientKey) {
+          throw new Error('환자명을 입력하세요.');
+        }
+
+        await setDoc(doc(db, 'patients', patientKey), {
+          name: patientKey,
+          birthDate: patientBirthDate.value,
+          hospitalId: patientHospitalId.value,
+          guardianName: guardianName.value,
+          guardianPhone: guardianPhone.value,
+
+          pharmacyName: pharmacyName.value,
+          pharmacyAddress: pharmacyAddress.value,
+          pharmacyPhone: pharmacyPhone.value,
+
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+
+        setResult(patientResult, `저장 완료 patientId: ${patientKey}`);
+      } catch (error) {
+        setResult(patientResult, `저장 실패: ${error.message}`, true);
+      }
+    });
+
+    loadMedBtn.addEventListener('click', async () => {
+      medList.innerHTML = '';
+
+      const patientId = queryPatientId.value.trim();
+
+      if (!patientId) {
+        return;
+      }
+
+      try {
+        await ensureSignedIn();
+
+        const medRef = collection(db, `patients/${patientId}/medSchedules`);
+        const q = query(medRef, orderBy('createdAt', 'desc'));
+        const snap = await getDocs(q);
+
+        foodInfoArea.innerHTML = '';
+
+for (const scheduleDoc of snap.docs) {
+
+  const data = scheduleDoc.data();
+
+  const medicineName =
+    data.medicineName ?? '';
+
+  const item =
+    document.createElement('li');
+
+  item.textContent =
+    `${medicineName} / 시간: ${(data.times ?? []).join(', ')}`;
+
+  medList.appendChild(item);
+
+  const foodInfo =
+    await loadFoodInfoByMedicine(medicineName);
+
+  if (!foodInfo) continue;
+
+  const card =
+    document.createElement('div');
+
+  card.className = 'card';
+
+  card.innerHTML = `
+
+    <h3>${medicineName}</h3>
+
+    <p>
+      <strong>성분:</strong>
+      ${foodInfo.ingredients.join(', ')}
+    </p>
+
+    <p>
+      <strong>좋은 음식:</strong>
+      ${foodInfo.goodFoods.join(', ') || '없음'}
+    </p>
+
+    <p>
+      <strong>나쁜 음식:</strong>
+      ${foodInfo.badFoods.join(', ') || '없음'}
+    </p>
+
+    <p>
+      <strong>주의사항:</strong>
+      ${foodInfo.notes.join(', ') || '없음'}
+    </p>
+  `;
+
+  foodInfoArea.appendChild(card);
+}
+      } catch (error) {
+        const item = document.createElement('li');
+        item.className = 'err';
+        item.textContent = `조회 실패: ${error.message}`;
+        medList.appendChild(item);
+      }
+    });
+
+    saveScheduleBtn.addEventListener('click', async () => {
+      try {
+        await ensureSignedIn();
+
+        const patientId = schedulePatientId.value.trim();
+        const medicineName = scheduleMedicineName.value.trim();
+
+        const ingredients = scheduleIngredients.value
+          .split(',')
+          .map(v => v.trim())
+          .filter(v => v.length > 0);
+
+        const dateText = scheduleDate.value;
+        const timeText = scheduleTime.value;
+        const selectedMealTime = mealTime.value;
+        const selectedMealType = mealType.value;
+	const mealLabelText = mealLabel.value.trim();
+	const fasting = isFasting.checked;
+        const isRepeatDaily = repeatDaily.checked;
+
+        const repeatWeekdays = weekdayChecks
+          .filter((el) => el.checked)
+          .map((el) => Number(el.value));
+
+        if (!patientId || !medicineName || !dateText || !timeText) {
+          throw new Error('환자 ID, 약 이름, 날짜, 시간을 모두 입력하세요.');
+        }
+
+        const alarmDate = new Date(`${dateText}T${timeText}:00`);
+
+        if (Number.isNaN(alarmDate.getTime())) {
+          throw new Error('유효한 날짜/시간을 입력하세요.');
+        }
+
+        const until = (isRepeatDaily || repeatWeekdays.length > 0)
+          ? repeatUntilDate.value
+            ? new Date(`${repeatUntilDate.value}T23:59:59`)
+            : new Date('2100-12-31T23:59:59')
+          : alarmDate;
+
+        await addDoc(collection(db, `patients/${patientId}/medSchedules`), {
+		medicineName,
+                ingredients,
+		time: timeText,
+		mealTime: selectedMealTime,
+		mealType: selectedMealType,
+		mealLabel:
+    		mealLabelText ||
+    		`${selectedMealTime === 'breakfast'
+    		  ? '아침'
+   		   : selectedMealTime === 'lunch'
+    		  ? '점심'
+    		  : '저녁'} ${
+     		 selectedMealType === 'before_meal'
+        		? '식전'
+        		: selectedMealType === 'after_meal'
+        		? '식후'
+        		: '공복'
+   	 	}`,
+		isFasting: fasting,
+
+  		alarmDate: dateText,
+  		alarmTime: timeText,
+ 		alarmAt: Timestamp.fromDate(alarmDate),
+
+  		repeatDaily: isRepeatDaily,
+  		repeatWeekdays,
+  		repeatUntilAt: Timestamp.fromDate(until),
+
+  		source: 'web',
+
+  		createdAt: serverTimestamp(),
+  		updatedAt: serverTimestamp(),
+		});
+
+        setResult(
+          scheduleResult,
+          `알림 스케줄 저장 완료 (${patientId})`
+        );
+      } catch (error) {
+        setResult(scheduleResult, `저장 실패: ${error.message}`, true);
+      }
+    });
+
+    if (!configInvalid) {
+      ensureSignedIn().catch((error) => {
+        authStatus.className = 'hint err';
+        authStatus.textContent = `인증 실패: ${error.message}`;
+      });
+    }
+loadPatientInfoBtn.addEventListener('click', async () => {
+  try {
+    await ensureSignedIn();
+
+    const patientId = editPatientId.value.trim();
+
+    if (!patientId) {
+      throw new Error('환자 ID 또는 환자명을 입력하세요.');
+    }
+
+    const patientSnap = await getDoc(doc(db, 'patients', patientId));
+
+    if (!patientSnap.exists()) {
+      throw new Error('해당 환자 정보를 찾을 수 없습니다.');
+    }
+
+    const data = patientSnap.data();
+
+    editPatientName.value = data.name ?? patientId;
+    editPatientBirthDate.value = data.birthDate ?? '';
+    editPatientHospitalId.value = data.hospitalId ?? '';
+    editGuardianName.value = data.guardianName ?? '';
+    editGuardianPhone.value = data.guardianPhone ?? '';
+
+    editPharmacyName.value = data.pharmacyName ?? '';
+    editPharmacyAddress.value = data.pharmacyAddress ?? '';
+    editPharmacyPhone.value = data.pharmacyPhone ?? '';
+
+    setResult(editPatientLoadResult, '환자 정보 불러오기 완료');
+  } catch (error) {
+    setResult(editPatientLoadResult, `불러오기 실패: ${error.message}`, true);
+  }
+});
+
+updatePatientBtn.addEventListener('click', async () => {
+  try {
+    await ensureSignedIn();
+
+    const patientId = editPatientId.value.trim();
+
+    if (!patientId) {
+      throw new Error('수정할 환자 ID를 입력하세요.');
+    }
+
+    await setDoc(doc(db, 'patients', patientId), {
+      name: editPatientName.value,
+      birthDate: editPatientBirthDate.value,
+      hospitalId: editPatientHospitalId.value,
+      guardianName: editGuardianName.value,
+      guardianPhone: editGuardianPhone.value,
+
+      pharmacyName: editPharmacyName.value,
+      pharmacyAddress: editPharmacyAddress.value,
+      pharmacyPhone: editPharmacyPhone.value,
+
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+
+    setResult(editPatientSaveResult, `수정 저장 완료 patientId: ${patientId}`);
+  } catch (error) {
+    setResult(editPatientSaveResult, `수정 저장 실패: ${error.message}`, true);
+  }
+});
+
+saveFoodInfoBtn.addEventListener('click', async () => {
+
+  try {
+
+    await ensureSignedIn();
+
+    const ingredient = foodIngredient.value.trim();
+
+    if (!ingredient) {
+      throw new Error('성분명을 입력하세요.');
+    }
+
+    const riskItems =
+      document.querySelectorAll('.food-risk-item');
+
+    const foodRisks = [];
+
+    riskItems.forEach(item => {
+
+      const food =
+        item.querySelector('.riskFoodName').value.trim();
+
+      const severity =
+        item.querySelector('.riskSeverity').value;
+
+      const reason =
+        item.querySelector('.riskReason').value.trim();
+
+      if (!food) return;
+
+      foodRisks.push({
+        food,
+        severity,
+        reason,
+      });
+
+    });
+
+    await setDoc(doc(db, 'medicineFoodInfo', ingredient), {
+
+      ingredient,
+
+      foodRisks,
+
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+
+    }, { merge: true });
+
+    setResult(
+      foodInfoResult,
+      `음식 정보 저장 완료: ${ingredient}`
+    );
+
+  } catch (error) {
+
+    setResult(
+      foodInfoResult,
+      `저장 실패: ${error.message}`,
+      true
+    );
+
+  }
+
+});
+saveMedicineBtn.addEventListener('click', async () => {
+  try {
+
+    await ensureSignedIn();
+
+    const medName = medicineName.value.trim();
+
+    const ingredients = medicineIngredient.value
+      .split(',')
+      .map(v => v.trim())
+      .filter(v => v.length > 0);
+
+    if (!medName || ingredients.length === 0) {
+      throw new Error('약 이름과 성분명을 입력하세요.');
+    }
+
+    await setDoc(doc(db, 'medicines', medName), {
+
+      name: medName,
+
+      ingredients: ingredients,
+
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+
+    }, { merge: true });
+
+    setResult(
+      medicineResult,
+      `약 정보 저장 완료: ${medName}`
+    );
+
+  } catch (error) {
+
+    setResult(
+      medicineResult,
+      `저장 실패: ${error.message}`,
+      true
+    );
+  }
+});
+
+loadFoodInfoBtn.addEventListener('click', async () => {
+
+  try {
+
+    await ensureSignedIn();
+
+    const ingredient =
+      foodIngredient.value.trim();
+
+    if (!ingredient) {
+      throw new Error('성분명을 입력하세요.');
+    }
+
+    const snap = await getDoc(
+      doc(db, 'medicineFoodInfo', ingredient)
+    );
+
+    if (!snap.exists()) {
+      throw new Error('저장된 정보가 없습니다.');
+    }
+
+    const data = snap.data();
+
+    foodRiskContainer.innerHTML = '';
+
+    (data.foodRisks || []).forEach(risk => {
+
+      const div = document.createElement('div');
+
+      div.className = 'food-risk-item card';
+
+      div.innerHTML = `
+
+        <label>음식 이름</label>
+        <input
+          class="riskFoodName"
+          value="${risk.food || ''}"
+        />
+
+        <label>위험도</label>
+        <select class="riskSeverity">
+
+          <option value="safe"
+            ${risk.severity === 'safe' ? 'selected' : ''}>
+            🟢 안전
+          </option>
+
+          <option value="caution"
+            ${risk.severity === 'caution' ? 'selected' : ''}>
+            🟡 주의
+          </option>
+
+          <option value="high"
+            ${risk.severity === 'high' ? 'selected' : ''}>
+            🔴 매우 위험
+          </option>
+
+        </select>
+
+        <label>이유</label>
+        <textarea
+          class="riskReason"
+          rows="2"
+        >${risk.reason || ''}</textarea>
+
+      `;
+
+      foodRiskContainer.appendChild(div);
+
+    });
+
+    setResult(
+      foodInfoResult,
+      '기존 음식 정보 불러오기 완료'
+    );
+
+  } catch (error) {
+
+    setResult(
+      foodInfoResult,
+      `불러오기 실패: ${error.message}`,
+      true
+    );
+
+  }
+
+});
+
+async function loadFoodInfoByMedicine(medicineName) {
+
+  const medicineSnap = await getDoc(
+    doc(db, 'medicines', medicineName)
+  );
+
+  if (!medicineSnap.exists()) {
+    ingredients = medicineSnap.data().ingredients || [];
+  }
+
+  const medicineData = medicineSnap.data();
+
+  const ingredients =
+    medicineData.ingredients || [];
+
+  const goodFoods = [];
+  const badFoods = [];
+  const notes = [];
+
+  for (const ingredient of ingredients) {
+
+    const foodSnap = await getDoc(
+      doc(db, 'medicineFoodInfo', ingredient)
+    );
+
+    if (!foodSnap.exists()) continue;
+
+    const foodData = foodSnap.data();
+
+    (foodData.goodFoods || []).forEach(v => {
+      if (!goodFoods.includes(v)) {
+        goodFoods.push(v);
+      }
+    });
+
+    (foodData.badFoods || []).forEach(v => {
+      if (!badFoods.includes(v)) {
+        badFoods.push(v);
+      }
+    });
+
+    if (foodData.note) {
+      notes.push(foodData.note);
+    }
+  }
+
+  return {
+    ingredients,
+    goodFoods,
+    badFoods,
+    notes,
+  };
+}
+
+addFoodRiskBtn.addEventListener('click', () => {
+
+  const div = document.createElement('div');
+
+  div.className = 'food-risk-item card';
+
+  div.innerHTML = `
+
+    <label>음식 이름</label>
+    <input class="riskFoodName" placeholder="예: 우유" />
+
+    <label>위험도</label>
+    <select class="riskSeverity">
+      <option value="safe">🟢 안전</option>
+      <option value="caution">🟡 주의</option>
+      <option value="high">🔴 매우 위험</option>
+    </select>
+
+    <label>이유</label>
+    <textarea
+      class="riskReason"
+      rows="2"
+      placeholder="예: 흡수율 감소"
+    ></textarea>
+
+  `;
+
+  foodRiskContainer.appendChild(div);
+
+});
+
+loadLogBtn.addEventListener(
+  'click',
+  async () => {
+
+    try {
+
+      const patientId =
+        logPatientId.value.trim();
+
+      if (!patientId) {
+        throw new Error(
+          '환자 ID를 입력하세요.'
+        );
+      }
+
+      logList.innerHTML = '';
+
+      const logsRef = ref(
+        rtdb,
+        `patients/${patientId}/medLogs`
+      );
+
+      const snapshot =
+        await get(logsRef);
+
+      if (!snapshot.exists()) {
+
+        const li =
+          document.createElement('li');
+
+        li.textContent =
+          '복약 기록 없음';
+
+        logList.appendChild(li);
+
+        return;
+      }
+
+      const data = snapshot.val();
+
+      Object.keys(data)
+        .reverse()
+        .forEach(key => {
+
+          const li =
+            document.createElement('li');
+
+          li.textContent =
+            data[key];
+
+          logList.appendChild(li);
+
+        });
+
+    } catch (error) {
+
+      alert(error.message);
+
+    }
+  }
+);
+
+  </script>
+</body>
+</html>

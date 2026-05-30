@@ -1,0 +1,41 @@
+웹페이지 들어가기
+1. index.html 파일이 있는 폴더에서 터미널 접속하기
+2. python -m http.server 8080 명령어 입력하여 local 서버 열기
+3. 인터넷에 http://localhost:8080/ 입력하여 웹 접속
+
+- local server라 그런지 server open 없이도 local web 접속 및 사용 가능 함(바로가기 아이콘 사용)
+_____________________________________________________________________
+
+firebase 설정 사용
+- firebase 에서 웹 , 앱 사용하기 통해 sdk와 프로젝트 이름 동일하게 설정하기
+
+- 컬렉션 별로 데이터 저장 방법 바꾸기
+
+- authentication에서 로그인 방법 <익명> 활성화 하기
+
+-fire base apikey
+	apiKey: "AIzaSyB3n9cTNNBa2hFTVRddtMU9pG-Tha7n_u0",
+ 		authDomain: "test2-814d1.firebaseapp.com",
+  		projectId: "test2-814d1",
+  		storageBucket: "test2-814d1.firebasestorage.app",
+  		messagingSenderId: "510762522149",
+  		appId: "1:510762522149:web:12c8b9d20e7c2d1c7c51cc",
+
+Realtime Database URL: https://test2-814d1-default-rtdb.asia-southeast1.firebasedatabase.app/
+_____________________________________________________________________
+
+flutter 설정 사용
+-flutter 기본 사용
+	- flutter clean, flutter pub get, flutter run 명령어 사용
+	- main.dart 에서 코드 실행
+	- pubspec.yaml 파일에서 flutter pub get 을 통해 API(?) 적용
+
+-flutter icon 이미지 설정 방법
+	-1024x 1024 아이콘을 pubspec.yaml 파일 내의 icon 파일 경로	로 수정
+	- dart run flutter_launcher_icons 명령어로 이미지를 아이콘으로 	변경
+
+- flutter splash 이미지 설정 방법
+	- 1024x1024 이미지 준비 후 pubspec.yaml 파일 내의 splash 파	일 경로로 수정
+	- dart run flutter_native_splash:create 명령어로 이미지를 splah	로 변경
+
+
