@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 import '../core/constants.dart';
 import '../session/patient_session.dart';
@@ -19,6 +20,7 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
   Widget build(BuildContext context) {
     final currentPatientId =
         PatientSession.patientId.value ?? 'default-patient';
+    final DatabaseReference rtdb = FirebaseDatabase.instance.ref();
 
     return ChickScaffold(
       title: '알림조회/수정 ($currentPatientId)',
@@ -79,7 +81,13 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
                                     .toList();
 
                             const weekdayLabels = [
-                              '일', '월', '화', '수', '목', '금', '토'
+                              '일',
+                              '월',
+                              '화',
+                              '수',
+                              '목',
+                              '금',
+                              '토'
                             ];
 
                             String repeatText = '반복 없음';
@@ -115,7 +123,6 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
                                   children: [
                                     Text('시간: $time'),
                                     Text('복용: ${data['mealLabel'] ?? '-'}'),
-
                                     if (data['isFasting'] == true)
                                       const Text(
                                         '공복 복용',
@@ -124,7 +131,6 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
-
                                     Text('반복: $repeatText'),
                                   ],
                                 ),
@@ -153,16 +159,30 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
                                       picked.minute,
                                     );
 
+                                    final newTime =
+                                        '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+
                                     await FirebaseFirestore.instance
                                         .collection('patients')
                                         .doc(currentPatientId)
                                         .collection('medSchedules')
                                         .doc(docs[i].id)
                                         .update({
-                                      'time':
-                                          '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}',
-                                      'alarmAt': Timestamp.fromDate(newAlarmTime),
+                                      'time': newTime,
+                                      'alarmAt':
+                                          Timestamp.fromDate(newAlarmTime),
                                       'updatedAt': FieldValue.serverTimestamp(),
+                                    });
+
+                                    await FirebaseDatabase.instance
+                                        .ref()
+                                        .child('patients')
+                                        .child(currentPatientId)
+                                        .child('medSchedules')
+                                        .child(docs[i].id)
+                                        .update({
+                                      'medicineName': data['medicineName'],
+                                      'time': newTime,
                                     });
 
                                     if (!mounted) return;
