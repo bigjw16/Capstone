@@ -100,6 +100,8 @@
   - `firestore.rules` 추가
   - `firebase.json` Firestore Rules 배포 설정 추가
  
+---
+
 ## [v1.0.4] - 2026-06-02
 
 ### Added
@@ -126,3 +128,5 @@
 ### Dependencies
 
 - firebase_database 패키지 추가
+
+--- 
