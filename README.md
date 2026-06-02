@@ -55,7 +55,7 @@ git checkout webpage
 
 또는 VS Code의 Live Server를 이용하여 실행할 수 있습니다.
 
-## 로그인 기능에서 사용가능한 ADMIN 계정 
+### 로그인 기능에서 사용가능한 ADMIN 계정 
 - E-mail: admin@example.com
 - PW: admin1234
 
