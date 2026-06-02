@@ -55,6 +55,10 @@ git checkout webpage
 
 또는 VS Code의 Live Server를 이용하여 실행할 수 있습니다.
 
+## 로그인 기능에서 사용가능한 ADMIN 계정 
+E-mail: admin@example.com
+PW: admin1234
+
 ## 개발 목적
 
 고령자 및 환자의 복약 순응도를 향상시키기 위한 스마트 복약 관리 시스템 구축을 목표로 합니다.
