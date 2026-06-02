@@ -99,3 +99,29 @@
 - Firebase 설정 업데이트
   - `firestore.rules` 추가
   - `firebase.json` Firestore Rules 배포 설정 추가
+ 
+## [v1.0.4] - 2026-06-02
+
+### Added
+
+- 복약 통계 기능 추가
+- 오늘의 복약 리워드 기능 추가
+- 관리자 웹페이지 추가
+- Firebase Authentication 기반 관리자 로그인 추가
+- 환자/약/성분 자동완성 기능 추가
+
+### Changed
+
+- 오늘 홈 화면 개선
+- 복약 알림 수정 기능 개선
+- Firestore ↔ RTDB 동기화 구조 개선
+- ESP8266 복약 기록 조회 기능 개선
+
+### Security
+
+- Firestore 보안 규칙 추가
+- 관리자 검증 기반 데이터 접근 제어 적용
+
+### Dependencies
+
+- firebase_database 패키지 추가

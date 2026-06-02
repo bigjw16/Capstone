@@ -54,8 +54,8 @@
 
 자세한 변경 사항은 [CHANGELOG.md](./CHANGELOG.md)를 참고하세요.
 
-## 프로젝트 
-설치 및 환경 구성 방법은 [Project Development Guide.md](./Project_Development_Guide.md)를 참고하세요.
+## 설치 및 환경구성
+설치 및 환경구성 방법은 [Project Development Guide.md](./Project_Development_Guide.md)를 참고하세요.
 
 # 프로젝트 구조
 
