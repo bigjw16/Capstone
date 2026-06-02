@@ -5,6 +5,7 @@ import '../core/constants.dart';
 import '../session/patient_session.dart';
 import '../widgets/chick_card.dart';
 import '../widgets/chick_scaffold.dart';
+import '../widgets/today_reward_card.dart';
 import 'settings_login_page.dart';
 
 class TodayHomePage extends StatelessWidget {
@@ -45,6 +46,38 @@ class TodayHomePage extends StatelessWidget {
     return todayDay.year == startDay.year &&
         todayDay.month == startDay.month &&
         todayDay.day == startDay.day;
+  }
+
+  String _formatScheduleTimes(Map<String, dynamic> data) {
+    final timeTexts = <String>[];
+
+    void addTime(Object? value) {
+      final text = value?.toString().trim();
+      if (text == null || text.isEmpty) return;
+      if (!timeTexts.contains(text)) timeTexts.add(text);
+    }
+
+    final times = data['times'];
+    if (times is List) {
+      for (final time in times) {
+        addTime(time);
+      }
+    } else {
+      addTime(times);
+    }
+
+    addTime(data['time']);
+    addTime(data['alarmTime']);
+
+    final alarmAt = data['alarmAt'];
+    if (alarmAt is Timestamp) {
+      final date = alarmAt.toDate();
+      final hour = date.hour.toString().padLeft(2, '0');
+      final minute = date.minute.toString().padLeft(2, '0');
+      addTime('$hour:$minute');
+    }
+
+    return timeTexts.isEmpty ? '시간 정보 없음' : timeTexts.join(', ');
   }
 
   @override
@@ -114,13 +147,9 @@ class TodayHomePage extends StatelessWidget {
               ),
             ),
           ),
-          const ChickCard(
-            child: Center(
-              child: Text(
-                '개발중',
-                style: TextStyle(fontSize: 20, color: Colors.grey),
-              ),
-            ),
+          TodayRewardCard(
+            patientId: currentPatientId,
+            today: today,
           ),
           Expanded(
             child: ChickCard(
@@ -165,9 +194,7 @@ class TodayHomePage extends StatelessWidget {
                           itemCount: dueDocs.length,
                           itemBuilder: (_, i) {
                             final data = dueDocs[i].data();
-                            final times =
-                                (data['times'] as List<dynamic>? ?? [])
-                                    .join(', ');
+                            final times = _formatScheduleTimes(data);
 
                             return ListTile(
                               leading: const Icon(

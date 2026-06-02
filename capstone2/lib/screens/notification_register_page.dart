@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/material.dart';
 
 import '../core/constants.dart';
 import '../session/patient_session.dart';
@@ -16,11 +16,114 @@ class NotificationRegisterPage extends StatefulWidget {
 }
 
 class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
+  String _formatScheduleTime(Map<String, dynamic> data) {
+    final timeTexts = <String>[];
+
+    void addTime(Object? value) {
+      final text = value?.toString().trim();
+      if (text == null || text.isEmpty) return;
+      if (!timeTexts.contains(text)) timeTexts.add(text);
+    }
+
+    final times = data['times'];
+    if (times is List) {
+      for (final time in times) {
+        addTime(time);
+      }
+    } else {
+      addTime(times);
+    }
+
+    addTime(data['time']);
+    addTime(data['alarmTime']);
+
+    final alarmAt = data['alarmAt'];
+    if (alarmAt is Timestamp) {
+      final date = alarmAt.toDate();
+      addTime(_formatTime(date.hour, date.minute));
+    }
+
+    return timeTexts.isEmpty ? '-' : timeTexts.join(', ');
+  }
+
+  TimeOfDay _initialTimeFromSchedule(Map<String, dynamic> data) {
+    final alarmAt = data['alarmAt'];
+    if (alarmAt is Timestamp) {
+      final date = alarmAt.toDate();
+      return TimeOfDay(hour: date.hour, minute: date.minute);
+    }
+
+    final timeText = (data['time'] ?? data['alarmTime'])?.toString();
+    final match =
+        RegExp(r'^(\d{1,2}):(\d{1,2})$').firstMatch(timeText ?? '');
+    if (match != null) {
+      return TimeOfDay(
+        hour: int.parse(match.group(1)!),
+        minute: int.parse(match.group(2)!),
+      );
+    }
+
+    return TimeOfDay.now();
+  }
+
+  DateTime _alarmDateWithNewTime(
+    Map<String, dynamic> data,
+    TimeOfDay picked,
+  ) {
+    final alarmAt = data['alarmAt'];
+    final baseDate = alarmAt is Timestamp ? alarmAt.toDate() : DateTime.now();
+
+    return DateTime(
+      baseDate.year,
+      baseDate.month,
+      baseDate.day,
+      picked.hour,
+      picked.minute,
+    );
+  }
+
+  String _formatTime(int hour, int minute) {
+    return '${hour.toString().padLeft(2, '0')}'
+        ':${minute.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _updateScheduleTime({
+    required String patientId,
+    required String scheduleId,
+    required Map<String, dynamic> data,
+    required TimeOfDay picked,
+  }) async {
+    final newTime = _formatTime(picked.hour, picked.minute);
+    final newAlarmTime = _alarmDateWithNewTime(data, picked);
+    final updateData = {
+      'time': newTime,
+      'alarmTime': newTime,
+      'times': [newTime],
+      'alarmAt': Timestamp.fromDate(newAlarmTime),
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    await FirebaseFirestore.instance
+        .collection('patients')
+        .doc(patientId)
+        .collection('medSchedules')
+        .doc(scheduleId)
+        .update(updateData);
+
+    await FirebaseDatabase.instance
+        .ref('patients/$patientId/medSchedules/$scheduleId')
+        .update({
+      'medicineName': data['medicineName'],
+      'time': newTime,
+      'alarmTime': newTime,
+      'times': [newTime],
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentPatientId =
         PatientSession.patientId.value ?? 'default-patient';
-    final DatabaseReference rtdb = FirebaseDatabase.instance.ref();
 
     return ChickScaffold(
       title: '알림조회/수정 ($currentPatientId)',
@@ -71,7 +174,7 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
                           itemBuilder: (_, i) {
                             final data = docs[i].data();
 
-                            final time = data['time'] ?? '-';
+                            final time = _formatScheduleTime(data);
 
                             final repeatDaily = data['repeatDaily'] == true;
 
@@ -87,7 +190,7 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
                               '수',
                               '목',
                               '금',
-                              '토'
+                              '토',
                             ];
 
                             String repeatText = '반복 없음';
@@ -142,56 +245,35 @@ class _NotificationRegisterPageState extends State<NotificationRegisterPage> {
                                   onPressed: () async {
                                     final picked = await showTimePicker(
                                       context: context,
-                                      initialTime: TimeOfDay.fromDateTime(
-                                        (data['alarmAt'] as Timestamp).toDate(),
-                                      ),
+                                      initialTime: _initialTimeFromSchedule(data),
                                     );
 
                                     if (picked == null) return;
 
-                                    final now = DateTime.now();
+                                    try {
+                                      await _updateScheduleTime(
+                                        patientId: currentPatientId,
+                                        scheduleId: docs[i].id,
+                                        data: data,
+                                        picked: picked,
+                                      );
 
-                                    final newAlarmTime = DateTime(
-                                      now.year,
-                                      now.month,
-                                      now.day,
-                                      picked.hour,
-                                      picked.minute,
-                                    );
-
-                                    final newTime =
-                                        '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
-
-                                    await FirebaseFirestore.instance
-                                        .collection('patients')
-                                        .doc(currentPatientId)
-                                        .collection('medSchedules')
-                                        .doc(docs[i].id)
-                                        .update({
-                                      'time': newTime,
-                                      'alarmAt':
-                                          Timestamp.fromDate(newAlarmTime),
-                                      'updatedAt': FieldValue.serverTimestamp(),
-                                    });
-
-                                    await FirebaseDatabase.instance
-                                        .ref()
-                                        .child('patients')
-                                        .child(currentPatientId)
-                                        .child('medSchedules')
-                                        .child(docs[i].id)
-                                        .update({
-                                      'medicineName': data['medicineName'],
-                                      'time': newTime,
-                                    });
-
-                                    if (!mounted) return;
+                                      if (!mounted) return;                                    
 
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('복약 시간이 수정되었습니다.'),
-                                      ),
-                                    );
+                                        const SnackBar(
+                                          content: Text('복약 시간이 수정되었습니다.'),
+                                        ),
+                                      );
+                                    } catch (error) {
+                                      if (!mounted) return;
+
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('수정 실패: $error'),
+                                        ),
+                                      );
+                                    }
                                   },
                                 ),
                               ),
