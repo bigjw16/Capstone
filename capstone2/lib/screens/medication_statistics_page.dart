@@ -16,7 +16,7 @@ class MedicationStatisticsPage extends StatefulWidget {
 }
 
 class _MedicationStatisticsPageState extends State<MedicationStatisticsPage> {
-  static const _pageLoadTimeout = Duration(seconds: 15);
+  static const _pageLoadTimeout = Duration(seconds: 30);
 
   Future<_MedicationStatistics>? _statisticsFuture;
   String? _loadedPatientId;
@@ -24,7 +24,6 @@ class _MedicationStatisticsPageState extends State<MedicationStatisticsPage> {
   Future<_MedicationStatistics> _loadStatistics(String patientId) {
     return _MedicationStatisticsRepository().load(patientId).timeout(
       _pageLoadTimeout,
-      onTimeout: () => _MedicationStatistics.emptyFor(patientId),
     );
   }
 
@@ -233,25 +232,50 @@ class _MedicationStatisticsRepository {
         .get()
         .timeout(_requestTimeout);
 
-    final scheduledDays = <String>{};
+    final scheduledOccurrences = <String, String>{};
     final today = _dateOnly(DateTime.now());
 
     for (final scheduleDoc in scheduleSnapshot.docs) {
-      scheduledDays.addAll(_scheduledDaysFrom(scheduleDoc.data(), today));
+      scheduledOccurrences.addAll(
+        _scheduledOccurrencesFrom(
+          scheduleId: scheduleDoc.id,
+          data: scheduleDoc.data(),
+          today: today,
+        ),
+      );
     }
 
-    final takenDays = await _loadTakenDays(rtdbPatientId);
-    final effectiveTakenDays = takenDays.intersection(scheduledDays);
-    final missedDays = scheduledDays.difference(effectiveTakenDays).toList()
+    final takenOccurrences = await _loadTakenOccurrences(
+      firestorePatientId: firestorePatientId,
+      rtdbPatientId: rtdbPatientId,
+    );
+    final takenCount = scheduledOccurrences.keys
+        .where((key) => _isTakenOccurrence(key, takenOccurrences))
+        .length;
+    final missedDays = scheduledOccurrences.entries
+        .where((entry) => !_isTakenOccurrence(entry.key, takenOccurrences))
+        .map((entry) => entry.value)
+        .toList()
       ..sort();
 
     return _MedicationStatistics(
       firestorePatientId: firestorePatientId,
       rtdbPatientId: rtdbPatientId,
-      totalScheduledCount: scheduledDays.length,
-      takenCount: effectiveTakenDays.length,
+      totalScheduledCount: scheduledOccurrences.length,
+      takenCount: takenCount,
       missedDays: missedDays,
     );
+  }
+
+  Map<String, String> _scheduledOccurrencesFrom({
+    required String scheduleId,
+    required Map<String, dynamic> data,
+    required DateTime today,
+  }) {
+    final days = _scheduledDaysFrom(data, today);
+    return {
+      for (final day in days) _occurrenceKey(day, scheduleId): day,
+    };
   }
 
   Set<String> _scheduledDaysFrom(Map<String, dynamic> data, DateTime today) {
@@ -296,45 +320,87 @@ class _MedicationStatisticsRepository {
     return days;
   }
 
-  Future<Set<String>> _loadTakenDays(String rtdbPatientId) async {
-    final DataSnapshot snapshot;
+  Future<Set<String>> _loadTakenOccurrences({
+    required String firestorePatientId,
+    required String rtdbPatientId,
+  }) async {
+    final occurrences = <String>{};
+    final paths = <String>[
+      'medicationResponses/$firestorePatientId',
+      'medicationResponses/$rtdbPatientId',
+      'patients/$rtdbPatientId/medLogs',
+      'medicationResponses',
+    ];
+    final patientIds = {firestorePatientId, rtdbPatientId};
 
+    final snapshots = await Future.wait(paths.map(_readRtdbPath));
+    for (var i = 0; i < snapshots.length; i++) {
+      final snapshot = snapshots[i];
+      if (snapshot == null || !snapshot.exists) continue;
+      _collectTakenOccurrences(
+        value: snapshot.value,
+        occurrences: occurrences,
+        patientIds: patientIds,
+        requirePatientMatch: paths[i] == 'medicationResponses',
+      );
+    }
+
+    return occurrences;
+  }
+
+  Future<DataSnapshot?> _readRtdbPath(String path) async {
     try {
-      snapshot = await FirebaseDatabase.instance
-          .ref('patients/$rtdbPatientId/medLogs')
+      return await FirebaseDatabase.instance
+          .ref(path)
           .get()
           .timeout(_requestTimeout);
     } catch (_) {
-      return <String>{};
+      return null;
     }
+  }
 
-    if (!snapshot.exists) return <String>{};
+  void _collectTakenOccurrences({
+    required Object? value,
+    required Set<String> occurrences,
+    required Set<String> patientIds,
+    bool requirePatientMatch = false,
+  }) {
+    void collect(Object? key, Object? entry) {
+      final date = _dateFromLogEntry(key?.toString() ?? '', entry);
 
-    final value = snapshot.value;
-    final days = <String>{};
-
-    if (value is Map) {
-      value.forEach((key, entry) {
-        final date = _dateFromLogEntry(key, entry);
-        if (date != null) days.add(_formatDate(date));
-      });
-    } else if (value is List) {
-      for (var i = 0; i < value.length; i++) {
-        final date = _dateFromLogEntry(i.toString(), value[i]);
-        if (date != null) days.add(_formatDate(date));
+      if (date == null) {
+        if (entry is Map) {
+          entry.forEach(collect);
+        } else if (entry is List) {
+          for (var i = 0; i < entry.length; i++) {
+            collect(i, entry[i]);
+          }
+        }
+        return;
       }
-    } else {
-      final date = _dateFromLogEntry('', value);
-      if (date != null) days.add(_formatDate(date));
+
+      if (!_logBelongsToPatient(
+        entry: entry,
+        patientIds: patientIds,
+        requirePatientMatch: requirePatientMatch,
+      )) {
+        return;
+      }
+
+      final dateKey = _formatDate(date);
+      final scheduleId = _scheduleIdFromLogEntry(entry);
+      occurrences.add(_occurrenceKey(dateKey, scheduleId));
+      if (scheduleId.isEmpty) occurrences.add(_dateOnlyOccurrenceKey(dateKey));
     }
 
-    return days;
+    collect('', value);
   }
 
   DateTime? _dateFromLogEntry(String key, Object? entry) {
     if (entry is Map) {
       for (final field in const [
         'takenAt',
+        'scheduledDate',
         'date',
         'time',
         'timestamp',
@@ -347,6 +413,36 @@ class _MedicationStatisticsRepository {
 
     return _readDate(entry) ?? _readDate(key);
   }
+
+  bool _logBelongsToPatient({
+    required Object? entry,
+    required Set<String> patientIds,
+    required bool requirePatientMatch,
+  }) {
+    if (entry is! Map) return !requirePatientMatch;
+
+    final value = entry['patientId']?.toString().trim();
+    if (value == null || value.isEmpty) return !requirePatientMatch;
+    return patientIds.contains(value);
+  }
+
+  String _scheduleIdFromLogEntry(Object? entry) {
+    if (entry is Map) {
+      final value = entry['scheduleId']?.toString().trim();
+      if (value != null && value.isNotEmpty) return value;
+    }
+    return '';
+  }
+
+  bool _isTakenOccurrence(String scheduledKey, Set<String> takenOccurrences) {
+    final date = scheduledKey.split('|').first;
+    return takenOccurrences.contains(scheduledKey) ||
+        takenOccurrences.contains(_dateOnlyOccurrenceKey(date));
+  }
+
+  String _occurrenceKey(String date, String scheduleId) => '$date|$scheduleId';
+
+  String _dateOnlyOccurrenceKey(String date) => '$date|*';
 
   String? _firstString(Map<String, dynamic> data, List<String> keys) {
     for (final key in keys) {

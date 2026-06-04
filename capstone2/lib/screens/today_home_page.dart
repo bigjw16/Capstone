@@ -49,35 +49,18 @@ class TodayHomePage extends StatelessWidget {
   }
 
   String _formatScheduleTimes(Map<String, dynamic> data) {
-    final timeTexts = <String>[];
-
-    void addTime(Object? value) {
-      final text = value?.toString().trim();
-      if (text == null || text.isEmpty) return;
-      if (!timeTexts.contains(text)) timeTexts.add(text);
-    }
-
-    final times = data['times'];
-    if (times is List) {
-      for (final time in times) {
-        addTime(time);
-      }
-    } else {
-      addTime(times);
-    }
-
-    addTime(data['time']);
-    addTime(data['alarmTime']);
+    final alarmTime = data['alarmTime']?.toString().trim();
+    if (alarmTime != null && alarmTime.isNotEmpty) return alarmTime;
 
     final alarmAt = data['alarmAt'];
     if (alarmAt is Timestamp) {
       final date = alarmAt.toDate();
       final hour = date.hour.toString().padLeft(2, '0');
       final minute = date.minute.toString().padLeft(2, '0');
-      addTime('$hour:$minute');
+      return '$hour:$minute';
     }
 
-    return timeTexts.isEmpty ? '시간 정보 없음' : timeTexts.join(', ');
+    return '시간 정보 없음';
   }
 
   @override

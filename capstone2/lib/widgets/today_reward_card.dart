@@ -154,6 +154,7 @@ class _TodayRewardRepository {
     });
 
     final takenCount = await _loadTakenCount(
+      patientId: patientId,
       rtdbPatientId: rtdbPatientId,
       dateKey: dateKey,
     );
@@ -237,28 +238,49 @@ class _TodayRewardRepository {
   }
 
   Future<int> _loadTakenCount({
+    required String patientId,
     required String rtdbPatientId,
     required String dateKey,
   }) async {
-    final DataSnapshot snapshot;
+    final takenLogKeys = <String>{};
+    final paths = <String>{
+      'medicationResponses/$patientId',
+      'medicationResponses/$rtdbPatientId',
+      'patients/$rtdbPatientId/medLogs',
+    };
 
-    try {
-      snapshot = await _database
-          .ref('patients/$rtdbPatientId/medLogs')
-          .get()
-          .timeout(_timeout);
-    } catch (_) {
-      return 0;
+    for (final path in paths) {
+      final snapshot = await _readRtdbPath(path);
+      if (snapshot == null || !snapshot.exists) continue;
+      _collectTakenLogKeys(
+        value: snapshot.value,
+        path: path,
+        dateKey: dateKey,
+        takenLogKeys: takenLogKeys,
+      );
     }
 
-    if (!snapshot.exists) return 0;
-    final value = snapshot.value;
-    final takenLogKeys = <String>{};
+    return takenLogKeys.length;
+  }
 
+  Future<DataSnapshot?> _readRtdbPath(String path) async {
+    try {
+      return await _database.ref(path).get().timeout(_timeout);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _collectTakenLogKeys({
+    required Object? value,
+    required String path,
+    required String dateKey,
+    required Set<String> takenLogKeys,
+  }) {
     void collect(Object? key, Object? entry) {
       final entryDate = _dateFromLogEntry(key?.toString() ?? '', entry);
       if (entryDate == null || _formatDate(entryDate) != dateKey) return;
-      takenLogKeys.add(key?.toString() ?? takenLogKeys.length.toString());
+      takenLogKeys.add('$path/${key ?? takenLogKeys.length}');
     }
 
     if (value is Map) {
@@ -270,8 +292,6 @@ class _TodayRewardRepository {
     } else {
       collect('single', value);
     }
-
-    return takenLogKeys.length;
   }
 
   bool _isDueOn(Map<String, dynamic> data, DateTime day) {
@@ -394,6 +414,7 @@ DateTime? _dateFromLogEntry(String key, Object? entry) {
   if (entry is Map) {
     for (final field in const [
       'takenAt',
+      'scheduledDate',
       'date',
       'time',
       'timestamp',
