@@ -146,59 +146,58 @@ flutter run
 ---
 
 ### iOS
-1. iOS 실행을 위한 필수 조건 (Mac 필요)
-  iOS 실행을 위해 반드시 다음이 필요합니다.
-  
-  macOS (MacBook / iMac / Mac mini)
-  Xcode 설치
-  Apple ID
-  Flutter SDK (Mac에도 설치 필요)
-  iPhone 또는 iOS Simulator
-
+ 1. iOS 실행을 위한 필수 조건 (Mac 필요)
+    iOS 실행을 위해 반드시 다음이 필요합니다.
+    macOS (MacBook / iMac / Mac mini)
+    Xcode 설치
+    Apple ID
+    Flutter SDK (Mac에도 설치 필요)
+    iPhone 또는 iOS Simulator
+    
 2. Mac에서 Flutter iOS 환경 구성
-  3.1 Flutter 설치 확인
+   2.1 Flutter 설치 확인
 
-  flutter doctor
+   flutter doctor
 
-  정상 상태:
-  [✓] Flutter
-  [✓] Xcode
-  [✓] iOS toolchain
+   정상 상태:
+   [✓] Flutter
+   [✓] Xcode
+   [✓] iOS toolchain
 
-  3.2 Xcode 설치
+   2.2 Xcode 설치
 
-  App Store에서 설치:
+   App Store에서 설치:
   
-  Xcode Download
+   Xcode Download
   
-  설치 후 필수 실행:
-  sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
-  sudo xcodebuild -runFirstLaunch
+   설치 후 필수 실행:
+   sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+   sudo xcodebuild -runFirstLaunch
 
-  3.3 CocoaPods 설치
-  sudo gem install cocoapods
+   2.3 CocoaPods 설치
+   sudo gem install cocoapods
 
-  확인: 
-  pod --version
+   확인: 
+   pod --version
 
-4. iPhone 실제 기기 연결
-  4.1 iPhone 설정
+3. iPhone 실제 기기 연결
+   3.1 iPhone 설정
 
-  경로:
-  설정 → 개인정보 보호 및 보안 → 개발자 모드 → ON
+   경로:
+   설정 → 개인정보 보호 및 보안 → 개발자 모드 → ON
   
-  또는:
-  설정 → 일반 → VPN 및 기기 관리 → 신뢰 설정
+   또는:
+   설정 → 일반 → VPN 및 기기 관리 → 신뢰 설정
 
-  4.2 USB 연결
-  iPhone을 Mac에 USB 연결
-  “이 컴퓨터를 신뢰하시겠습니까?” → 신뢰 선택
+   3.2 USB 연결
+   iPhone을 Mac에 USB 연결
+   “이 컴퓨터를 신뢰하시겠습니까?” → 신뢰 선택
 
-  4.3 Flutter에서 기기 확인
-  flutter devices
+   3.3 Flutter에서 기기 확인
+   flutter devices
 
-  4.4 실행
-  flutter run
+   3.4 실행
+   flutter run
 
 ---
 
@@ -248,7 +247,7 @@ flutter run
 ## 6.1 실행 위치 이동
 
 ```bash id="web1"
-cd index.html이 있는 폴더
+cd hospital.html이 있는 폴더
 ```
 
 ---
