@@ -196,12 +196,10 @@ flutter run
 
   4.3 Flutter에서 기기 확인
   flutter devices
-  
-  예시:
-  1 connected device:
-  iPhone 15 Pro (mobile)
+
   4.4 실행
   flutter run
+
 ---
 
 # 4. GitHub 프로젝트 다운로드
