@@ -162,8 +162,7 @@ Capstone1에서 검증된 기능들을 통합하고 개선하여 실제 사용 �
 ## IoT
 
 * ESP8266 (NodeMCU)
-* ESP32
-* Arduino IDE
+* Arduino Mega 2560 IDE
 * NTPClient
 * Firebase ESP Client
 
