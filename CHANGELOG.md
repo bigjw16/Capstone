@@ -44,62 +44,29 @@
 
 ### Added
 - 관리자 로그인 기능 추가
-  - Firebase Authentication 이메일/비밀번호 로그인 적용
-  - Firestore `adminUsers` 기반 관리자 인증 구현
-  - 승인된 관리자만 웹페이지 접근 가능
-
 - Firestore 보안 규칙 추가
-  - `firestore.rules` 파일 생성
-  - 관리자 권한 검증 로직 구현
-  - 주요 컬렉션 접근 제어 적용
-
 - 환자 ID 매핑 기능 추가
-  - Firestore 환자 ID ↔ RTDB 환자 ID 연결 기능 구현
-  - 환자 문서에 `rtdbPatientId` 필드 추가
-
 - ESP8266 약 이름 매핑 기능 추가
-  - ESP8266용 영문 약 이름 필드 추가
-  - RTDB ↔ Firestore 약 정보 연동 구조 개선
-
 - 자동완성 기능 추가
-  - 환자명 / 약 이름 / 성분명 자동완성
-  - 음식 정보 등록 시 성분 검색 기능 추가
 
 ---
 
 ### Changed
 - 복약 기록 조회 로직 개선
-  - Firestore 환자 ID → RTDB 환자 ID 변환 후 조회
-
 - 복약 일정 등록 로직 개선
-  - 약 선택 시 해당 약 성분 자동 반영
-
 - 약 정보 저장 구조 개선
-  - 성분명 + ESP8266 영문 이름 함께 저장
-
 - 음식 정보 등록 방식 개선
-  - 성분 검색 기반 위험도 등록 방식으로 변경
 
 ---
 
 ### Security
 - Firestore 접근 권한 강화
-  - `adminUsers.active == true`
-  - `adminUsers.verified == true`
-
 - 보호 컬렉션 접근 제한 적용
-  - `hospitals`
-  - `pharmacies`
-  - `patients`
-  - `medicines`
-  - `medicineFoodInfo`
 
 ---
 
 ### Configuration
 - Firebase 설정 업데이트
-  - `firestore.rules` 추가
-  - `firebase.json` Firestore Rules 배포 설정 추가
  
 ---
 
@@ -107,12 +74,10 @@
 
 ### Added
 
-- 복약 통계 기능 추가
-  - 복약 예정 기록과 실제 복약 기록을 비교하여 통계 제공
-  - 복약률 및 미복약 일자 확인 가능
-- 오늘의 복약 리워드 기능 추가
-  - 당일 복약 완료 시 랜덤 리워드 지급
-  - 누적 리워드 확인 가능
+- 복약 예정 기록과 실제 복약 기록을 비교하여 통계 제공
+- 복약률 및 미복약 일자 확인 가능
+- 당일 복약 완료 시 랜덤 리워드 지급
+- 누적 리워드 확인 가능
 
 ### Changed
 
