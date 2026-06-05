@@ -191,33 +191,80 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
 
-    // hospitals
+    function isVerifiedAdminByUid() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid))
+        && get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.active == true
+        && get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.verified == true;
+    }
+
+    function isVerifiedAdminByEmail() {
+      return signedIn()
+        && request.auth.token.email != null
+        && exists(/databases/$(database)/documents/adminUsers/$(request.auth.token.email))
+        && get(/databases/$(database)/documents/adminUsers/$(request.auth.token.email)).data.active == true
+        && get(/databases/$(database)/documents/adminUsers/$(request.auth.token.email)).data.verified == true;
+    }
+
+    function isAdmin() {
+      return isVerifiedAdminByUid() || isVerifiedAdminByEmail();
+    }
+
+    match /adminUsers/{userId} {
+      allow read: if signedIn()
+        && (
+          request.auth.uid == userId ||
+          request.auth.token.email == userId ||
+          isAdmin()
+        );
+
+      allow write: if false;
+    }
+
     match /hospitals/{document=**} {
-      allow read, write: if true;
+      allow read: if signedIn();
+      allow write: if isAdmin();
     }
 
-    // pharmacies
     match /pharmacies/{document=**} {
-      allow read, write: if true;
+      allow read: if signedIn();
+      allow write: if isAdmin();
     }
 
-    // medicine food info
-    match /medicineFoodInfo/{document=**} {
-      allow read, write: if true;
+    match /medicines/{document=**} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
     }
-		
-    match /{document=**} {
-      allow read, write: if request.auth != null;
-      }
-    
-    // patients
+
+    match /medicineFoodInfo/{document=**} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
     match /patients/{patientId} {
-      allow read, write: if true;
+      allow read: if signedIn();
+      allow write: if isAdmin();
 
       match /medSchedules/{scheduleId} {
-        allow read, write: if true;
+        allow read, write: if signedIn();
       }
+
+      match /rewardDays/{rewardDayId} {
+        allow read, write: if signedIn();
+      }
+    }
+
+    match /patients/{patientId}/{document=**} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
@@ -255,7 +302,7 @@ patients/{patientId}/medSchedules/{scheduleId}
 
 ### 2. Firebase 설정값 복사
 
-`web-portal/index.html`
+`web-portal/hospital.html`
 
 ```js
 const firebaseConfig = {
@@ -267,7 +314,11 @@ const firebaseConfig = {
   appId: "1:510762522149:web:12c8b9d20e7c2d1c7c51cc",
 };
 ```
-
+---
+'Realtime Database URL'
+```
+https://test2-814d1-default-rtdb.asia-southeast1.firebasedatabase.app/
+```
 ---
 
 # 로컬 서버 실행
