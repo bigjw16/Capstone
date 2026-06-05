@@ -314,8 +314,9 @@ const firebaseConfig = {
   appId: "1:510762522149:web:12c8b9d20e7c2d1c7c51cc",
 };
 ```
----
-'Realtime Database URL'
+### 3. RTDB URL 주소
+
+`Realtime Database URL`
 ```
 https://test2-814d1-default-rtdb.asia-southeast1.firebasedatabase.app/
 ```
