@@ -340,7 +340,7 @@ Firebase
 
 자세한 개발 환경 구축 방법은 아래 문서를 참고하세요.
 
-Project_Development_Guide.md
+(Project_Development_Guide.md)
 
 ---
 
@@ -348,7 +348,8 @@ Project_Development_Guide.md
 
 프로젝트 버전별 변경 사항은 아래 문서를 참고하세요.
 
-CHANGELOG.md
+
+(CHANGELOG.md)
 
 
 ---
