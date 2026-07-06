@@ -2,7 +2,8 @@
 
 # Smart Medication Management System
 
-의공학과 졸업 Capstone Design 프로젝트
+의공학과 Capstone Design 프로젝트
+최종 결과물은 Capstone2 폴더로 이동하여 확인하길 바랍니다. 
 
 ---
 
