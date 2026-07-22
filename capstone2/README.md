@@ -1,29 +1,12 @@
-# Patient Medication Sync System
+# capstone2
 
 > **Biomedical Engineering Capstone Design Project**
 
-Web, Flutter, Firebase, IoT Device를 연동하여 환자의 복약 정보를 실시간으로 관리하는 스마트 복약 관리 시스템입니다.
-
----
-
-# 📖 프로젝트 소개
-
-Patient Medication Sync System은 병원, 환자, 보호자가 하나의 플랫폼에서 복약 정보를 공유할 수 있도록 개발된 통합 복약 관리 시스템입니다.
-
-Firebase 기반 클라우드 서비스를 활용하여 복약 일정과 복약 기록을 실시간으로 동기화하며, Flutter 모바일 애플리케이션과 Web Portal을 통해 데이터를 관리합니다. 또한 ESP8266 기반 IoT 장치와 연동하여 실제 복약 여부를 자동으로 기록할 수 있도록 설계되었습니다.
+Web, Flutter, Firebase, IoT Device를 연동하여 환자의 복약 정보를 실시간으로 관리하는 스마트 복약 관리 시스템의 Flutter 코드 입니다.
 
 ---
 
 # ✨ 주요 기능
-
-## 🌐 Web Portal
-
-- 병원 및 환자 정보 관리
-- 약 정보 등록
-- 음식-약물 상호작용 관리
-- 복약 일정 조회
-
----
 
 ## 📱 Flutter Application
 
@@ -32,15 +15,6 @@ Firebase 기반 클라우드 서비스를 활용하여 복약 일정과 복약 �
 - 복약 통계 제공
 - 캘린더 기반 복약 일정 표시
 - 음식 추천 및 주의 음식 조회
-
----
-
-## 📟 IoT Device
-
-- Firebase 데이터 연동
-- 복약 알림 표시
-- 버튼 입력을 통한 복약 확인
-- 복약 기록 자동 저장
 
 ---
 
@@ -70,24 +44,6 @@ Firebase 기반 클라우드 서비스를 활용하여 복약 일정과 복약 �
 |----------|------------|
 | Mobile | Flutter, Dart |
 | Backend | Firebase Authentication, Cloud Firestore, Realtime Database |
-| Web | HTML, CSS, JavaScript |
-| IoT | ESP8266, Arduino Mega 2560 |
-| Hardware | DFPlayer Mini, TFT LCD |
-
----
-
-# 📂 프로젝트 구조
-
-```text
-project-root/
-│
-├── flutter_app/
-├── web-portal/
-├── firebase/
-│   └── firestore.rules
-│
-└── README.md
-```
 
 ---
 
