@@ -148,8 +148,6 @@ Realtime Database
 # 📄 문서
 
 - 📘 [개발 환경 구축 가이드](./Project_Development_Guide.md)
-- 🔥 [Firebase 설정](./Firebase_Setup.md)
-- 🛠️ [문제 해결 가이드](./Troubleshooting.md)
 - 📝 [CHANGELOG](./CHANGELOG.md)
 
 ---
