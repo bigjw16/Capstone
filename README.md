@@ -232,16 +232,8 @@ Firebase
 
 # 📄 문서
 
-- `Project_Development_Guide.md` : 개발 환경 구축 가이드
-- `CHANGELOG.md` : 버전별 업데이트 내역
-
----
-
-# 📌 Repository
-
-```text
-https://github.com/bigjw16/Capstone
-```
+- [`Project_Development_Guide.md`](./Project_Development_Guide.md) - 개발 환경 구축 가이드
+- [`CHANGELOG.md`](./CHANGELOG.md) - 버전별 업데이트 내역
 
 ---
 
